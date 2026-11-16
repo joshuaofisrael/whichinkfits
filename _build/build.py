@@ -2,12 +2,14 @@
 """Which Ink Fits static site.
 
   python3 _build/build.py           # noindex on every page (domain not live)
-  python3 _build/build.py --launch  # indexable, Cloudflare beacon
+  python3 _build/build.py --launch  # indexable, Cloudflare beacon, GA4 after consent
 Then: python3 _build/check.py [--launch] && python3 _build/legal_gate.py check --no-queue
 
+Set GA4_ID before --launch. check.py --launch fails while GA4_ID is empty.
 Canonicals always use https://whichinkfits.com/. Paths are root relative.
 The CNAME file is always written. Facts come from _build/hp_catalog.json and
 _build/more.py. This script does not invent a cartridge number.
+See LAUNCH-NOTES.md for the launch-day commands.
 """
 import html, json, os, re, shutil, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,6 +23,9 @@ TODAY = "2026-11-16"
 TODAY_H = "16 Nov 2026"
 INDEXNOW_KEY = "4f77a5e3aae98a8a1031b02723738f83"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
+# Measurement id from the GA4 property. Empty until the owner sets G-XXXXXXXXXX.
+# python3 _build/check.py --launch fails while this is empty.
+GA4_ID = ""
 HP_URL = "https://support.hp.com/us-en/document/ish_2405837-1980674-16"
 HP_TITLE = "Which cartridges work with my HP printer?"
 LEGAL_LINE = "© 2026 Joshua Israel Ventures LLC. All rights reserved. Which Ink Fits is a trade name of Joshua Israel Ventures LLC, a Florida limited liability company."
@@ -41,6 +46,8 @@ THIRD = {
 }
 LOGO = '<svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="14" fill="#0b3954"/><path d="M32 8c9 12 18 18 18 30a18 18 0 0 1-36 0c0-12 9-18 18-30z" fill="#087e8b"/><circle cx="32" cy="40" r="6" fill="#ffb347"/></svg>'
 NAV = [("/", "Home"), ("/printers/", "Printers"), ("/cartridges/", "Cartridges"), ("/guides/find-the-model-number/", "Find the number")]
+USED_TITLES = set()
+FAMS = {}
 
 def clean(s):
     return (s or "").replace("\u2013", "-").replace("\u2014", "-").replace("\u00a0", " ").replace("\u2011", "-")
@@ -63,6 +70,86 @@ def clip(d, n=155):
 
 def url(path):
     return BASE + path.lstrip("/")
+
+def fit_title(options):
+    cleaned = []
+    for o in options:
+        o = re.sub(r"\s+", " ", o).strip()
+        if o and o not in cleaned:
+            cleaned.append(o)
+    for o in cleaned:
+        if len(o) <= 59:
+            return o
+    raise SystemExit("no title under 60 chars: " + " | ".join(cleaned))
+
+def squeeze_name(name):
+    s = name
+    for w in ("e-All-in-One", "All-in-One", "Wide Format", "ePrinter", "Printers"):
+        s = re.sub(r"(?:\s*[-,]\s*|\s+)" + re.escape(w) + r"\b", " ", s, flags=re.I)
+    s = s.replace(" - ", " ")
+    s = re.sub(r"\s+", " ", s).strip(" -")
+    return s
+
+def printer_title(p):
+    name = p["name"]
+    short = squeeze_name(name)
+    if p["medium"] == "ink bottles":
+        options = [name + " bottles: which fit", "Which bottles fit " + name, "Which bottles fit " + short]
+    elif p["medium"] == "toner":
+        options = [name + " toner: which fits", "Which toner fits " + name, "Which toner fits " + short]
+    else:
+        options = [name + " ink: which cartridges fit", "Which ink fits " + name, "Which ink fits " + short]
+    return fit_title(options)
+
+def series_title(name):
+    short = squeeze_name(name)
+    return fit_title([name + ": which model", short + ": which model", "Which model: " + short])
+
+def analytics_markup():
+    if not LAUNCH:
+        return "", ""
+    src = "https://www.googletagmanager.com/gtag/js?id=" + GA4_ID
+    head = (
+        "<script>\n"
+        "window.dataLayer = window.dataLayer || [];\n"
+        "function gtag(){dataLayer.push(arguments);}\n"
+        "gtag('consent', 'default', {\n"
+        "  'ad_storage': 'denied',\n"
+        "  'ad_user_data': 'denied',\n"
+        "  'ad_personalization': 'denied',\n"
+        "  'analytics_storage': 'denied',\n"
+        "  'functionality_storage': 'denied',\n"
+        "  'personalization_storage': 'denied',\n"
+        "  'security_storage': 'granted',\n"
+        "  'wait_for_update': 500\n"
+        "});\n"
+        "(function () {\n"
+        "  var id = " + json.dumps(GA4_ID) + ";\n"
+        "  if (!id) return;\n"
+        "  try {\n"
+        "    if (localStorage.getItem('wif-consent') === 'granted') {\n"
+        "      gtag('consent', 'update', {'analytics_storage': 'granted'});\n"
+        "      var s = document.createElement('script');\n"
+        "      s.async = true;\n"
+        "      s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;\n"
+        "      document.head.appendChild(s);\n"
+        "      gtag('js', new Date());\n"
+        "      gtag('config', id);\n"
+        "      window.__wifGaLoaded = true;\n"
+        "    }\n"
+        "  } catch (e) {}\n"
+        "})();\n"
+        "</script>\n"
+        '<script id="ga4-loader" type="text/plain" data-ga4-src="' + E(src) + '"></script>'
+    )
+    body = (
+        '<div id="consent-banner" class="consent" role="region" aria-label="Cookie consent" hidden>'
+        '<p>Google Analytics 4 stays off until you accept. Cloudflare Web Analytics does not use cookies. <a href="/privacy/">Privacy</a></p>'
+        '<p class="consent-actions"><button type="button" id="consent-accept">Accept</button> '
+        '<button type="button" id="consent-reject">Reject</button></p></div>\n'
+        '<script src="/assets/consent.js?v=1"></script>'
+    )
+    return head, body
 
 def write(path, content):
     fp = os.path.join(ROOT, path.lstrip("/"))
@@ -100,6 +187,12 @@ def norm_supply(brand, row):
     }
 
 def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal=False):
+    title = re.sub(r"\s+", " ", title).strip()
+    if len(title) > 59:
+        raise SystemExit("title over 59 chars (" + str(len(title)) + "): " + title)
+    if title in USED_TITLES:
+        raise SystemExit("duplicate title: " + title)
+    USED_TITLES.add(title)
     desc = clip(desc)
     canon = url(path)
     if not noindex:
@@ -108,21 +201,16 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal
     if path == "/":
         ld.append({"@context": "https://schema.org", "@type": "WebSite", "name": BRAND, "url": BASE,
                    "publisher": {"@type": "Organization", "name": BRAND, "url": BASE, "logo": url("/logo.png")}})
-        ld.append({"@context": "https://schema.org", "@type": "Organization", "name": BRAND, "url": BASE, "logo": url("/logo.png"),
-                   "email": "joshuaofisrael@gmail.com"})
-    # Organization email would put the address in JSON-LD on the homepage, which legal_gate
-    # scans as visible text after stripping tags... scripts are stripped. JSON-LD is a script.
-    # legal_gate visible() strips script. So email in JSON-LD is OK. But the rule says
-    # email outside legal pages. The homepage is not a legal page. I'll keep email off the
-    # homepage schema and only on the contact page body.
-    if path == "/":
-        ld = [x for x in ld if x.get("@type") != "Organization" or "email" not in x]
+        # Email stays on the contact page. The homepage schema does not repeat it.
         ld.append({"@context": "https://schema.org", "@type": "Organization", "name": BRAND, "url": BASE, "logo": url("/logo.png")})
     if crumbs:
         ld.append({"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
             {"@type": "ListItem", "position": i + 1, "name": n, "item": url(p)} for i, (p, n) in enumerate(crumbs)]})
     if jsonld:
         ld += jsonld if isinstance(jsonld, list) else [jsonld]
+    if not noindex and path != "/" and not any(isinstance(x, dict) and x.get("@type") == "Article" for x in ld):
+        ld.append(article_ld(title, path))
+    og_type = "article" if any(isinstance(x, dict) and x.get("@type") == "Article" for x in ld) else "website"
     ldh = "".join('<script type="application/ld+json">' + json.dumps(x, ensure_ascii=False) + "</script>" for x in ld)
     nav = "".join('<a href="' + p + '"' + (' aria-current="page"' if p == path else "") + ">" + n + "</a>" for p, n in NAV)
     bc = ""
@@ -132,21 +220,33 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal
             for i, (p, n) in enumerate(crumbs)) + "</ol></nav>"
     robots = "noindex, follow" if (noindex or not LAUNCH) else "index, follow, max-image-preview:large"
     beacon = ("<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{\"token\": \"" + CF_BEACON_TOKEN + "\"}'></script><!-- End Cloudflare Web Analytics -->") if LAUNCH else "<!-- cf-beacon: added by the launch build -->"
+    ga4_head, ga4_body = analytics_markup()
     search = '<script src="/assets/search-index.js"></script>' if path == "/" else ""
     foot_legal = '<p class="legal-line">' + LEGAL_LINE + "</p>" if legal else ""
+    foot_links = [
+        ("/about/", "About"), ("/methodology/", "Sources and methods"), ("/image-policy/", "Image policy"),
+        ("/terms/", "Terms of use"), ("/privacy/", "Privacy"), ("/disclaimer/", "Disclaimer"),
+        ("/ad-disclosure/", "Advertising disclosure"), ("/copyright/", "Copyright and DMCA"), ("/contact/", "Contact"),
+    ]
+    foot = " | ".join('<a href="' + h + '">' + n + "</a>" for h, n in foot_links)
+    if LAUNCH:
+        foot += ' | <a href="#cookie-settings" id="cookie-settings">Cookie settings</a>'
+    mark = '<a class="mark" href="/image-policy/"><img src="/logo.png" width="34" height="34" alt="Image policy"></a>'
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{E(title)}</title><meta name="description" content="{E(desc)}"><link rel="canonical" href="{canon}">
 <meta name="robots" content="{robots}">
-<meta property="og:type" content="website"><meta property="og:site_name" content="{BRAND}"><meta property="og:title" content="{E(title)}"><meta property="og:description" content="{E(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{url('/og.png')}"><meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/style.css?v=1">{ldh}
+<meta property="og:type" content="{og_type}"><meta property="og:site_name" content="{BRAND}"><meta property="og:title" content="{E(title)}"><meta property="og:description" content="{E(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{url('/og.png')}"><meta property="og:image:alt" content="{BRAND}"><meta property="og:locale" content="en_US"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{E(title)}"><meta name="twitter:description" content="{E(desc)}"><meta name="twitter:image" content="{url('/og.png')}">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/style.css?v=2">{ldh}
+{ga4_head}
 </head><body><a class="skip" href="#main">Skip to content</a>
-<header class="site"><div class="wrap"><a class="brand" href="/">{LOGO}<span>{BRAND}</span></a><nav class="main" aria-label="Main">{nav}</nav></div></header>
+<header class="site"><div class="wrap"><div class="brandwrap">{mark}<a class="brand" href="/"><span>{BRAND}</span></a></div><nav class="main" aria-label="Main">{nav}</nav></div></header>
 <main id="main" class="wrap">{bc}{body}</main>
 <footer class="site"><div class="wrap"><p><strong>{BRAND}</strong> lists the ink, toner, and bottle numbers the printer maker publishes for a model, and the printers a number fits. Independent, and not affiliated with HP, Canon, Epson, or Brother. Confirm the number on the maker's page and on your printer.</p>
-<p class="flinks"><a href="/about/">About</a> | <a href="/methodology/">Sources and methods</a> | <a href="/image-policy/">Image policy</a> | <a href="/terms/">Terms of use</a> | <a href="/privacy/">Privacy</a> | <a href="/disclaimer/">Disclaimer</a> | <a href="/ad-disclosure/">Advertising disclosure</a> | <a href="/copyright/">Copyright and DMCA</a> | <a href="/contact/">Contact</a></p>
+<p class="flinks">{foot}</p>
 {foot_legal}</div></footer>
 {search}<script src="/assets/site.js?v=1" defer></script>{beacon}
+{ga4_body}
 </body></html>'''
 
 def ext(title, href):
@@ -326,12 +426,26 @@ def family_pages(printers):
 def medium_word(medium):
     return {"ink cartridges": "ink", "toner": "toner", "ink bottles": "ink bottles"}[medium]
 
+def pick_faq(p, lead_nums):
+    faqs = []
+    if lead_nums:
+        if p["medium"] == "ink bottles":
+            q = "Which ink bottles fit the " + p["name"] + "?"
+            a = "The manufacturer lists " + lead_nums + ". These are bottles for the tanks, not cartridges. Confirm the number on the bottle and on the manufacturer page linked below."
+        elif p["medium"] == "toner":
+            q = "Which toner fits the " + p["name"] + "?"
+            a = "The manufacturer lists " + lead_nums + ". Confirm the number on the toner and on the manufacturer page linked below."
+        else:
+            q = "Which cartridges fit the " + p["name"] + "?"
+            a = "The manufacturer lists " + lead_nums + ". Confirm the number on the cartridge and on the manufacturer page linked below."
+        faqs.append((q, a))
+    faqs.extend(find_faqs(p["brand"], p["medium"]))
+    return faqs
+
 def printer_page(p, series, fam):
     path = f'/printers/{p["brand"]}/{p["slug"]}/'
     sib = series.get(p["series"])
-    title = p["name"] + " " + medium_word(p["medium"]) + ": which cartridges fit"
-    if p["medium"] == "ink bottles":
-        title = p["name"] + " ink bottles: which supplies fit"
+    title = printer_title(p)
     colors = []
     for g in p["groups"]:
         for r in g["supplies"]:
@@ -372,7 +486,7 @@ def printer_page(p, series, fam):
         hub_name = sib["name"] if re.search(r"series|printers", sib["name"], re.I) else sib["name"] + " series"
         sib_html = "<h2>Same series</h2><p>" + ("Other models in this HP section." if p["brand"] == "hp" else "Other models on the same manufacturer list.") + "</p>"
         sib_html += '<p><a href="' + hub + '">' + E(hub_name) + "</a></p><ul class=\"cols\">" + "".join(items) + "</ul>"
-    faqs = find_faqs(p["brand"], p["medium"])
+    faqs = pick_faq(p, lead_nums)
     body = f'''<article class="prose wide"><h1>{E(p["name"])} {E(medium_word(p["medium"]))}: which cartridges fit</h1>
 <p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
 <div class="answer"><p><strong>Official numbers:</strong> {E(lead_nums)}.</p></div>
@@ -394,7 +508,7 @@ def printer_page(p, series, fam):
     if sib and not sib.get("skip_page"):
         crumbs.append(("/printers/" + p["brand"] + "/" + sib["slug"] + "/", sib["name"]))
     crumbs.append((path, p["name"]))
-    write(path, page(path, title if len(title) <= 70 else (p["name"] + ": which cartridges fit"), desc, body, [article_ld(p["name"] + " supplies", path), faq_ld(faqs)], crumbs))
+    write(path, page(path, title, desc, body, [article_ld(p["name"] + " supplies", path), faq_ld(faqs)], crumbs))
 
 def series_page(s):
     if s.get("skip_page"):
@@ -412,13 +526,41 @@ def series_page(s):
                 srcs.append((t, u))
             if len(srcs) >= 4:
                 break
+    fam_seen, fam_items = [], []
+    nums = []
+    for p in members:
+        for g in p["groups"]:
+            for r in g["supplies"]:
+                if r["sku"] not in nums:
+                    nums.append(r["sku"])
+                if r["family"] in fam_seen:
+                    continue
+                fam_seen.append(r["family"])
+                fam_items.append('<li><a href="/cartridges/' + r["family"] + '/">' + E(r["label"]) + "</a></li>")
+    cart_html = ""
+    if fam_items:
+        cart_html = "<h2>Numbers in this series</h2><p>Open a number to see every printer the manufacturer lists for it.</p><ul class=\"cols\">" + "".join(fam_items) + "</ul>"
+    sigs = {tuple(sorted((r["sku"], r["color"], r["capacity"]) for g in p["groups"] for r in g["supplies"])) for p in members}
+    shown = ", ".join(nums[:12])
+    if len(sigs) == 1:
+        share = "On the manufacturer lists checked " + TODAY_H + ", every model linked here shows the same numbers: " + shown + "."
+        if len(nums) > 12:
+            share += " The model pages list the rest."
+    else:
+        share = "The models linked here do not all show the same numbers on the manufacturer lists checked " + TODAY_H + ". Open the model that matches the name on your printer."
+    faqs = [
+        ("Which model should I open?", "Match the name on the front of the printer to one of the " + str(len(members)) + " models below. The model page has the supply table."),
+        ("Do these models use the same numbers?", share),
+    ]
     body = f'''<article class="prose wide"><h1>{E(s["name"])}</h1>
 <p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
 <div class="answer"><p>This series hub links every model we list from the manufacturer's compatibility pages. Open a model for the full table.</p></div>
 {info}<ul class="cards">{items}</ul>
+{cart_html}
+{faq_html(faqs)}
 {sources_html(srcs)}
-<p><a href="/printers/{s["brand"]}/">All {E(BRANDS[s["brand"]])} models</a></p></article>'''
-    write(path, page(path, clip(s["name"] + " series | " + BRAND, 70), desc, body, [article_ld(s["name"], path)],
+<p><a href="/printers/{s["brand"]}/">All {E(BRANDS[s["brand"]])} models</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p></article>'''
+    write(path, page(path, series_title(s["name"]), desc, body, [article_ld(s["name"], path), faq_ld(faqs)],
                      [("/", "Home"), ("/printers/", "Printers"), ("/printers/" + s["brand"] + "/", BRANDS[s["brand"]]), (path, s["name"])]))
 
 def cartridge_page(f):
@@ -456,20 +598,40 @@ def cartridge_page(f):
     medium = "ink bottles" if "bottle" in title else ("toner" if f["slug"] in ("hp-58a", "brother-tn-760") else "ink cartridges")
     if f["slug"] == "brother-dr-730":
         medium = "toner"
-    faqs = find_faqs(f["brand"], medium if medium != "toner" or f["slug"] != "brother-dr-730" else "toner")
+    faqs = [("Which printers use " + nice + "?", str(len(printers)) + " printers on the manufacturer lists checked " + TODAY_H + " are linked on this page. If your model is not listed, it was not on those pages.")]
+    faqs.extend(find_faqs(f["brand"], medium if medium != "toner" or f["slug"] != "brother-dr-730" else "toner"))
     body = f'''<article class="prose wide"><h1>{E(title.split(":")[0])}: which printers use them</h1>
 <p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
 <div class="answer"><p><strong>{len(printers)} printers</strong> on the manufacturer lists below use this number. If your model is not in the list, it is not on the pages we checked.</p></div>
 {supply_table(rows, sources[0][1])}
 <h2>Printers</h2><ul class="cols">{links}</ul>
+{related_cartridge_html(f)}
 {faq_html(faqs)}
 {sources_html(sources)}
-<p><a href="/cartridges/">All cartridges</a> · <a href="/printers/{f["brand"]}/">{E(BRANDS[f["brand"]])} printers</a></p>
+<p><a href="/cartridges/">All cartridges</a> · <a href="/printers/{f["brand"]}/">{E(BRANDS[f["brand"]])} printers</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p>
 </article>'''
     # h1 may say "them" for a drum. Acceptable.
-    write(path, page(path, title if len(title) <= 70 else (nice + ": which printers use them"), desc, body,
+    title = fit_title([title, "Which printers use " + nice, nice + ": which printers"])
+    write(path, page(path, title, desc, body,
                     [article_ld(nice, path), faq_ld(faqs)],
                     [("/", "Home"), ("/cartridges/", "Cartridges"), (path, nice)]))
+
+def related_cartridge_html(f):
+    mine = {(sl, b) for sl, _n, b in f["printers"]}
+    scored = []
+    for slug, other in FAMS.items():
+        if slug == f["slug"] or other["brand"] != f["brand"]:
+            continue
+        n = sum(1 for sl, _n, b in other["printers"] if (sl, b) in mine)
+        if n:
+            nice = BRANDS[other["brand"]] + " " + slug.split("-", 1)[1].upper()
+            scored.append((-n, nice, slug))
+    scored.sort()
+    if not scored:
+        return ""
+    items = ['<li><a href="/cartridges/' + slug + '/">' + E(nice) + "</a></li>" for _n, nice, slug in scored[:12]]
+    more = "<p>Open a printer page above for every number on that model.</p>" if len(scored) > 12 else ""
+    return "<h2>Other numbers on these printers</h2><p>These numbers are also on the manufacturer list for at least one printer linked above.</p><ul class=\"cols\">" + "".join(items) + "</ul>" + more
 
 def brand_page(brand, printers, series):
     path = "/printers/" + brand + "/"
@@ -481,13 +643,18 @@ def brand_page(brand, printers, series):
             continue
         p = next(x for x in printers if x["brand"] == brand and x["slug"] == s["members"][0])
         lone.append('<li><a href="/printers/' + brand + "/" + p["slug"] + '/">' + E(p["name"]) + "</a></li>")
+    n = sum(1 for p in printers if p["brand"] == brand)
+    faqs = [
+        ("Which " + BRANDS[brand] + " model should I open?", "Match the name on the front of the printer to one of the " + str(n) + " models. A series hub lists the models taken from that section of the manufacturer pages."),
+        ("Which cartridge number should I use?", "Open the model page and read the table. The numbers are the ones " + BRANDS[brand] + " prints, last checked " + TODAY_H + ". We do not copy a store's compatible ink chart."),
+    ]
     body = f'''<h1>{E(BRANDS[brand])} ink and toner</h1>
 <p class="answer">Models and series taken from {E(BRANDS[brand])}'s own compatibility pages. Open a series, or jump to a single model.</p>
 <ul class="cards">{cards}</ul>
 {("<h2>Single models</h2><ul class=\"cols\">" + "".join(lone) + "</ul>") if lone else ""}
-<p><a href="/printers/">All printers</a> · <a href="/cartridges/">All cartridges</a></p>'''
-    n = sum(1 for p in printers if p["brand"] == brand)
-    write(path, page(path, BRANDS[brand] + " printer ink and toner | " + BRAND, "Which cartridges, toner, or bottles " + BRANDS[brand] + " lists for " + str(n) + " printer models.", body, None,
+<p><a href="/printers/">All printers</a> · <a href="/cartridges/">All cartridges</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p>
+{faq_html(faqs)}'''
+    write(path, page(path, BRANDS[brand] + " printer ink and toner | " + BRAND, "Which cartridges, toner, or bottles " + BRANDS[brand] + " lists for " + str(n) + " printer models.", body, [faq_ld(faqs)],
                      [("/", "Home"), ("/printers/", "Printers"), (path, BRANDS[brand])]))
 
 def indexes(printers, series, fams):
@@ -495,15 +662,23 @@ def indexes(printers, series, fams):
     for b, name in BRANDS.items():
         n = sum(1 for p in printers if p["brand"] == b)
         cards.append('<li class="card"><h2><a href="/printers/' + b + '/">' + E(name) + "</a></h2><p>" + str(n) + " models from the manufacturer's lists.</p></li>")
-    body = '<h1>Printers</h1><p class="answer">Pick a brand. Every model page cites the manufacturer page it was checked against on ' + TODAY_H + '.</p><ul class="cards">' + "".join(cards) + "</ul>"
-    write("/printers/", page("/printers/", "Printer ink and toner by model | " + BRAND, "Find the cartridge, toner, or bottle for an HP, Canon, Epson, or Brother printer.", body, None, [("/", "Home"), ("/printers/", "Printers")]))
+    printer_faqs = [
+        ("Which brand should I pick?", "Pick the brand printed on the printer. This page links HP, Canon, Epson, and Brother. The count under a brand is the number of models taken from that manufacturer's pages."),
+        ("Which page should I open if I only know the cartridge number?", "Open the cartridge list and choose the number printed on the supply or the box."),
+    ]
+    body = '<h1>Printers</h1><p class="answer">Pick a brand. Every model page cites the manufacturer page it was checked against on ' + TODAY_H + '.</p><ul class="cards">' + "".join(cards) + '</ul><p><a href="/cartridges/">Cartridges</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p>' + faq_html(printer_faqs)
+    write("/printers/", page("/printers/", "Printer ink and toner by model | " + BRAND, "Find the cartridge, toner, or bottle for an HP, Canon, Epson, or Brother printer.", body, [faq_ld(printer_faqs)], [("/", "Home"), ("/printers/", "Printers")]))
     items = []
     for slug in sorted(fams):
         f = fams[slug]
         nice = BRANDS[f["brand"]] + " " + slug.split("-", 1)[1].upper()
         items.append('<li><a href="/cartridges/' + slug + '/">' + E(nice) + "</a> <span class=\"note\">" + str(len(f["printers"])) + " printers</span></li>")
-    body = '<h1>Cartridges, toner, and bottles</h1><p class="answer">Pick a number to see the printers the manufacturer lists for it.</p><ul class="cols">' + "".join(items) + "</ul>"
-    write("/cartridges/", page("/cartridges/", "Ink and toner by cartridge number | " + BRAND, "Which printers use a cartridge, toner, or bottle number, from the manufacturer lists.", body, None, [("/", "Home"), ("/cartridges/", "Cartridges")]))
+    cart_faqs = [
+        ("Which cartridge page should I open?", "Open the number printed on the cartridge, toner, or bottle. The page lists the printers the manufacturer names for that number."),
+        ("What if my printer is not listed on that page?", "It was not on the manufacturer pages checked " + TODAY_H + ". Open the printer by model, then confirm the number on the manufacturer page linked there."),
+    ]
+    body = '<h1>Cartridges, toner, and bottles</h1><p class="answer">Pick a number to see the printers the manufacturer lists for it.</p><ul class="cols">' + "".join(items) + '</ul><p><a href="/printers/">Printers</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p>' + faq_html(cart_faqs)
+    write("/cartridges/", page("/cartridges/", "Ink and toner by cartridge number | " + BRAND, "Which printers use a cartridge, toner, or bottle number, from the manufacturer lists.", body, [faq_ld(cart_faqs)], [("/", "Home"), ("/cartridges/", "Cartridges")]))
 
 def guide():
     path = "/guides/find-the-model-number/"
@@ -527,7 +702,7 @@ def guide():
 ])}
 <p><a href="/printers/">Browse printers</a> · <a href="/cartridges/">Browse cartridges</a></p>
 </article>'''
-    write(path, page(path, "Find your printer model and cartridge number | " + BRAND, "How to read the model number on the printer and the cartridge number on the box.", body, [article_ld("Find the model number", path), faq_ld(faqs)], [("/", "Home"), (path, "Find the number")]))
+    write(path, page(path, "Find the printer model and cartridge number", "How to read the model number on the printer and the cartridge number on the box.", body, [article_ld("Find the model number", path), faq_ld(faqs)], [("/", "Home"), (path, "Find the number")]))
 
 def home(printers, fams):
     picks = [
@@ -554,6 +729,7 @@ def home(printers, fams):
     links = "".join('<li><a href="' + h + '">' + E(n) + "</a></li>" for h, n in picks)
     brands = "".join('<li class="card"><h2><a href="/printers/' + b + '/">' + E(n) + "</a></h2><p>" + str(sum(1 for p in printers if p["brand"] == b)) + " models</p></li>" for b, n in BRANDS.items())
     faqs = [
+        ("Which page should I open?", "If the printer name is in front of you, open that model. If you have the number on the cartridge, toner, or bottle, open that cartridge page. Both lists come from the manufacturer pages, checked " + TODAY_H + "."),
         ("How do I find the model number?", "Read the name on the front of the printer, then search for it above. The cartridge number is on the cartridge and on the box. The guide explains both."),
         ("Do you list third party cartridges?", "No. A number appears here only when HP, Canon, Epson, or Brother prints it for that printer. We do not copy other stores' compatible ink charts."),
         ("What is the difference between a standard cartridge and a high yield cartridge?", "High yield means the manufacturer sells a larger fill of the same color. Both numbers are listed when the manufacturer lists both. Mixing them is described only where the manufacturer says it is allowed."),
@@ -587,7 +763,7 @@ def legal_pages():
 <h2>Dates</h2><p>The date on a page is the day we checked the source, not a refreshed stamp. We change it when the numbers change.</p>''')
     simple("/image-policy/", "Image policy | " + BRAND, "How Which Ink Fits handles images, logos, and diagrams.", "Image policy", f'''
 <p>Last updated {TODAY_H}.</p>
-<p>The mark in the header is our own drawing of an ink drop. We do not display HP, Canon, Epson, or Brother logos. The site has no product photos. If we add an illustration made by a model, the caption will say AI generated image, and it will not show a real person or a brand logo.</p>
+<p>The mark in the header is our own drawing of an ink drop, and that image links to this page. We do not display HP, Canon, Epson, or Brother logos. The site has no product photos. If we add an illustration made by a model, the caption will say AI generated image, and it will not show a real person or a brand logo.</p>
 <p>Questions: <a href="/contact/">contact</a> or the <a href="/copyright/">copyright page</a>.</p>''')
     simple("/contact/", "Contact " + BRAND, "Write to Which Ink Fits about a wrong cartridge number or a missing model.", "Contact", '''
 <p>For a correction or a model request, email <a href="mailto:joshuaofisrael@gmail.com">joshuaofisrael@gmail.com</a>.</p>
@@ -604,7 +780,7 @@ def legal_pages():
 <h2>Governing law</h2><p>These terms are governed by the laws of the State of Florida, without regard to conflict of law rules.</p>
 <h2>Changes</h2><p>The date above is the current version. Questions: <a href="/contact/">contact</a>.</p>'''),
         "/privacy/": ("Privacy", f'''<p>Last updated {D}. Which Ink Fits (whichinkfits.com) is a trade name of Joshua Israel Ventures LLC, a Florida limited liability company.</p>
-<h2>Analytics</h2><p>After the domain is live, the site may use Cloudflare Web Analytics to count page views. That product does not use cookies and does not track you across other sites.</p>
+<h2>Analytics</h2><p>The launch build uses Cloudflare Web Analytics and Google Analytics 4.</p><p>Cloudflare Web Analytics is on every launch page and counts page views. That product does not use cookies and does not track you across other sites.</p><p>Google Analytics 4 loads only after you accept the banner. Before that choice, Consent Mode v2 leaves analytics storage and ad storage denied, and the GA4 script is not requested. Accepting turns on analytics storage only. Ad storage stays denied. The site shows no ads. The launch build puts Cookie settings in the footer so you can accept or reject later. Rejecting keeps Google Analytics 4 unloaded.</p>
 <h2>Email</h2><p>If you email joshuaofisrael@gmail.com, we use your address and message to reply, and we keep them only as long as we need to.</p>
 <h2>Advertising</h2><p>The site shows no ads and has no affiliate links. If that changes, we will update this page first. You would be able to opt out of personalized ads at Google's ad settings and at aboutads.info.</p>
 <h2>Hosting</h2><p>The site is hosted on GitHub Pages, which may log IP addresses for security.</p>
@@ -621,7 +797,8 @@ def legal_pages():
     }
     for pth, (h1, inner) in legal.items():
         body = '<article class="prose"><h1>' + E(h1) + "</h1>" + inner + '<p class="legal-line">' + LEGAL_LINE + "</p></article>"
-        write(pth, page(pth, h1 + " | " + BRAND, h1 + " for Which Ink Fits.", body, None, [("/", "Home"), (pth, h1)], legal=True))
+        desc = "How Which Ink Fits uses Google Analytics 4 and Cloudflare Web Analytics." if pth == "/privacy/" else h1 + " for Which Ink Fits."
+        write(pth, page(pth, h1 + " | " + BRAND, desc, body, None, [("/", "Home"), (pth, h1)], legal=True))
 
 def not_found():
     body = '<h1>Page not found</h1><p>That page is not in this guide. Try the <a href="/printers/">printer list</a> or search from the <a href="/">home page</a>.</p>'
@@ -713,6 +890,7 @@ if __name__ == "__main__":
     printers, series = assemble()
     ALL = printers
     fams = family_pages(printers)
+    FAMS = fams
     for p in printers:
         printer_page(p, series, fams)
     for s in series.values():

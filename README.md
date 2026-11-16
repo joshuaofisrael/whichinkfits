@@ -22,6 +22,6 @@ Checked 16 Nov 2026: 826 printer pages, 70 cartridge and bottle pages, series hu
 
 ## Launch
 
-The CNAME file is `whichinkfits.com`. While `noindex` is present, `./indexnow.sh` does not ping. After `--launch` and a deploy, run `./indexnow.sh`.
+The exact commands, the empty `GA4_ID` gate, and IndexNow are in [LAUNCH-NOTES.md](LAUNCH-NOTES.md). The CNAME file is `whichinkfits.com`. While `noindex` is present, `./indexnow.sh` does not ping. After `--launch` and a deploy, run `./indexnow.sh`.
 
 Contact mail goes to joshuaofisrael@gmail.com. There are no affiliate links and no ads.

@@ -2,13 +2,31 @@
 """QA for Which Ink Fits. Exit 0 when nothing is wrong.
 
   python3 _build/check.py           # expects noindex on every page
-  python3 _build/check.py --launch  # expects index,follow except 404, and the beacon
+  python3 _build/check.py --launch  # index,follow except 404, beacon, and GA4
+
+--launch fails when GA4_ID in _build/build.py is empty, and when any page
+lacks the Cloudflare beacon or the GA4 loader.
 """
 import glob, html, json, os, re, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAUNCH = "--launch" in sys.argv
 LEGAL = {"terms", "privacy", "disclaimer", "copyright", "ad-disclosure"}
+INFO = {"about", "methodology", "image-policy", "contact", "terms", "privacy", "disclaimer", "copyright", "ad-disclosure"}
+FOOT = [("/about/", "About"), ("/contact/", "Contact"), ("/privacy/", "Privacy"), ("/terms/", "Terms"),
+        ("/disclaimer/", "Disclaimer"), ("/copyright/", "Copyright"), ("/ad-disclosure/", "Advertising"),
+        ("/image-policy/", "Image policy")]
+
+def const(name):
+    text = open(os.path.join(ROOT, "_build", "build.py"), encoding="utf-8").read()
+    m = re.search(r"(?m)^" + re.escape(name) + r'\s*=\s*"([^"]*)"', text)
+    return m.group(1) if m else None
+
+GA4_ID = const("GA4_ID")
+BEACON = const("CF_BEACON_TOKEN")
 bad = 0
+if LAUNCH and not (GA4_ID and re.fullmatch(r"G-[A-Za-z0-9]+", GA4_ID)):
+    print("ga4-id-empty")
+    bad += 1
 titles = {}
 files = [f for f in glob.glob(ROOT + "/**/*.html", recursive=True) if "/_build/" not in f]
 for f in files:
@@ -45,8 +63,20 @@ for f in files:
         print("longdesc", len(html.unescape(desc.group(1))), rel)
         bad += 1
     if LAUNCH:
-        if "static.cloudflareinsights.com/beacon.min.js" not in h:
+        if "static.cloudflareinsights.com/beacon.min.js" not in h or (BEACON and BEACON not in h):
             print("nobeacon", rel)
+            bad += 1
+        if "https://www.googletagmanager.com/gtag/js?id=" not in h or 'id="ga4-loader"' not in h:
+            print("noga4", rel)
+            bad += 1
+        elif GA4_ID and ("gtag/js?id=" + GA4_ID) not in h:
+            print("noga4", rel)
+            bad += 1
+        if "gtag('consent', 'default'" not in h or "'analytics_storage': 'denied'" not in h:
+            print("noconsent", rel)
+            bad += 1
+        if 'id="cookie-settings"' not in h or "Cookie settings" not in h:
+            print("nocookie", rel)
             bad += 1
         if "noindex" in h and rel != "404.html":
             print("noindex", rel)
@@ -60,8 +90,39 @@ for f in files:
     if re.search(r"amazon\.com|amzn\.to|[?&]tag=|ascsubtag", h, re.I):
         print("affiliate", rel)
         bad += 1
-    t = re.search(r"<title>(.*?)</title>", h).group(1)
+    t = html.unescape(re.search(r"<title>(.*?)</title>", h).group(1))
+    if not t or len(t) > 59:
+        print("longtitle", len(t), rel)
+        bad += 1
     titles.setdefault(t, []).append(rel)
+    imgs = re.findall(r"<img\b", h)
+    linked = re.findall(r'<a[^>]*href="/image-policy/"[^>]*>\s*<img\b', h)
+    if len(imgs) != len(linked):
+        print("img-policy", rel)
+        bad += 1
+    for href, _label in FOOT:
+        if 'href="' + href + '"' not in h:
+            print("footer", rel, href)
+            bad += 1
+    if re.search(r'<a [^>]*href="https://whichinkfits.com', h):
+        print("abs-internal", rel)
+        bad += 1
+    top = rel.split("/")[0]
+    if rel == "index.html":
+        for needle in ('"WebSite"', '"FAQPage"'):
+            if needle not in h:
+                print("schema", rel, needle)
+                bad += 1
+    elif rel != "404.html" and top in ("printers", "cartridges", "guides"):
+        for needle in ('"Article"', '"FAQPage"', '"BreadcrumbList"'):
+            if needle not in h:
+                print("schema", rel, needle)
+                bad += 1
+    elif top in INFO:
+        for needle in ('"Article"', '"BreadcrumbList"'):
+            if needle not in h:
+                print("schema", rel, needle)
+                bad += 1
     if rel not in ("404.html",) and top in ("printers", "cartridges", "guides") and rel.count("/") >= (3 if top == "printers" else 2):
         sec = re.search(r'<section class="sources".*?</section>', h, re.S)
         if not sec or "http" not in sec.group(0):
@@ -81,7 +142,7 @@ if open(os.path.join(ROOT, "CNAME"), encoding="utf-8").read().strip() != "whichi
     bad += 1
 robots = open(os.path.join(ROOT, "robots.txt"), encoding="utf-8").read()
 for bot in ["Googlebot", "Bingbot", "GPTBot", "ClaudeBot", "PerplexityBot", "OAI-SearchBot", "CCBot", "Google-Extended", "Applebot-Extended", "Bytespider"]:
-    if bot not in robots:
+    if "User-agent: " + bot + "\nAllow: /" not in robots:
         print("robots-missing", bot)
         bad += 1
 if "Sitemap: https://whichinkfits.com/sitemap.xml" not in robots:
@@ -90,6 +151,10 @@ if "Sitemap: https://whichinkfits.com/sitemap.xml" not in robots:
 sm = open(os.path.join(ROOT, "sitemap.xml"), encoding="utf-8").read()
 if "404" in sm or "noindex" in sm:
     print("sitemap-404")
+    bad += 1
+blocks = re.findall(r"<url>(.*?)</url>", sm, re.S)
+if not blocks or any("<loc>" not in b or "<lastmod>" not in b for b in blocks):
+    print("sitemap-lastmod")
     bad += 1
 home = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
 if "FAQPage" not in home or 'id="q"' not in home or "search-index.js" not in home:
@@ -102,6 +167,15 @@ if "mailto:joshuaofisrael@gmail.com" not in contact:
 llms = open(os.path.join(ROOT, "llms.txt"), encoding="utf-8").read()
 if "/printers/hp/officejet-pro-9015/" not in llms or "/cartridges/hp-67/" not in llms:
     print("llms")
+    bad += 1
+key = const("INDEXNOW_KEY")
+key_path = os.path.join(ROOT, (key or "missing") + ".txt")
+if not key or not os.path.isfile(key_path) or open(key_path, encoding="utf-8").read().strip() != key:
+    print("indexnow")
+    bad += 1
+privacy = open(os.path.join(ROOT, "privacy", "index.html"), encoding="utf-8").read()
+if "Google Analytics 4" not in privacy or "Cloudflare Web Analytics" not in privacy:
+    print("privacy-analytics")
     bad += 1
 print("files", len(files), "issues", bad)
 sys.exit(1 if bad else 0)
