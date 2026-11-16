@@ -1,6 +1,6 @@
 # Which Ink Fits (whichinkfits.com)
 
-Which cartridge, toner, or ink bottle fits a printer, and which printers a number fits. Static HTML for GitHub Pages (branch `main`, folder `/`). Joshua Israel Ventures LLC. Independent of HP, Canon, Epson, and Brother.
+Which cartridge, toner, or ink bottle fits a printer, and which printers a number fits. Static HTML. `.github/workflows/pages.yml` deploys the site to GitHub Pages on every push to `main` (the Pages API token for this repo cannot turn the feature on by itself). Joshua Israel Ventures LLC. Independent of HP, Canon, Epson, and Brother.
 
 ## Build
 
