@@ -1,1 +1,1 @@
-exclude: [README.md, _build, indexnow.sh]
+exclude: [README.md, LAUNCH-NOTES.md, _build, indexnow.sh]

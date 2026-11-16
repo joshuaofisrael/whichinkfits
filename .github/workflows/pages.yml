@@ -21,7 +21,7 @@ jobs:
       - name: Collect the site
         run: |
           mkdir -p _publish
-          rsync -a --exclude _publish --exclude _build --exclude .git --exclude .github --exclude README.md --exclude indexnow.sh ./ _publish/
+          rsync -a --exclude _publish --exclude _build --exclude .git --exclude .github --exclude README.md --exclude LAUNCH-NOTES.md --exclude indexnow.sh ./ _publish/
           test -f _publish/index.html
           test -f _publish/CNAME
       - uses: actions/configure-pages@v5
