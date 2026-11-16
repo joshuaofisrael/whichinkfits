@@ -25,7 +25,7 @@ INDEXNOW_KEY = "4f77a5e3aae98a8a1031b02723738f83"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 # Measurement id from the GA4 property. Empty until the owner sets G-XXXXXXXXXX.
 # python3 _build/check.py --launch fails while this is empty.
-GA4_ID = ""
+GA4_ID = "G-HQK26SX9HN"
 HP_URL = "https://support.hp.com/us-en/document/ish_2405837-1980674-16"
 HP_TITLE = "Which cartridges work with my HP printer?"
 LEGAL_LINE = "© 2026 Joshua Israel Ventures LLC. All rights reserved. Which Ink Fits is a trade name of Joshua Israel Ventures LLC, a Florida limited liability company."
