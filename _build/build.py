@@ -21,6 +21,11 @@ BASE = "https://whichinkfits.com/"
 BRAND = "Which Ink Fits"
 TODAY = "2026-11-16"
 TODAY_H = "16 Nov 2026"
+# Publish date for pages added after launch (the 18 Nov 2026 priority-moves run).
+# These pages reuse facts verified on TODAY above; PUBLISHED is only the date the
+# page itself went into the sitemap, so lastmod is not backdated or invented.
+PUBLISHED = "2026-11-18"
+PUBLISHED_H = "18 Nov 2026"
 INDEXNOW_KEY = "4f77a5e3aae98a8a1031b02723738f83"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 # Measurement id from the GA4 property. Empty until the owner sets G-XXXXXXXXXX.
@@ -186,7 +191,7 @@ def norm_supply(brand, row):
         "note": clean(row.get("note", "")), "label": " ".join(bits),
     }
 
-def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal=False):
+def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal=False, lastmod=None):
     title = re.sub(r"\s+", " ", title).strip()
     if len(title) > 59:
         raise SystemExit("title over 59 chars (" + str(len(title)) + "): " + title)
@@ -196,7 +201,7 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal
     desc = clip(desc)
     canon = url(path)
     if not noindex:
-        PAGES.append((path, TODAY))
+        PAGES.append((path, lastmod or TODAY))
     ld = []
     if path == "/":
         ld.append({"@context": "https://schema.org", "@type": "WebSite", "name": BRAND, "url": BASE,
@@ -209,7 +214,7 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal
     if jsonld:
         ld += jsonld if isinstance(jsonld, list) else [jsonld]
     if not noindex and path != "/" and not any(isinstance(x, dict) and x.get("@type") == "Article" for x in ld):
-        ld.append(article_ld(title, path))
+        ld.append(article_ld(title, path, lastmod))
     og_type = "article" if any(isinstance(x, dict) and x.get("@type") == "Article" for x in ld) else "website"
     ldh = "".join('<script type="application/ld+json">' + json.dumps(x, ensure_ascii=False) + "</script>" for x in ld)
     nav = "".join('<a href="' + p + '"' + (' aria-current="page"' if p == path else "") + ">" + n + "</a>" for p, n in NAV)
@@ -252,8 +257,9 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal
 def ext(title, href):
     return '<a href="' + E(href) + '" rel="nofollow noopener" target="_blank">' + E(title) + "</a>"
 
-def article_ld(headline, path):
-    return {"@context": "https://schema.org", "@type": "Article", "headline": headline, "datePublished": TODAY, "dateModified": TODAY,
+def article_ld(headline, path, published=None):
+    d = published or TODAY
+    return {"@context": "https://schema.org", "@type": "Article", "headline": headline, "datePublished": d, "dateModified": d,
             "image": url("/og.png"), "author": {"@type": "Organization", "name": BRAND, "url": BASE},
             "publisher": {"@type": "Organization", "name": BRAND, "url": BASE, "logo": {"@type": "ImageObject", "url": url("/logo.png")}},
             "mainEntityOfPage": url(path)}
@@ -487,6 +493,13 @@ def printer_page(p, series, fam):
         sib_html = "<h2>Same series</h2><p>" + ("Other models in this HP section." if p["brand"] == "hp" else "Other models on the same manufacturer list.") + "</p>"
         sib_html += '<p><a href="' + hub + '">' + E(hub_name) + "</a></p><ul class=\"cols\">" + "".join(items) + "</ul>"
     faqs = pick_faq(p, lead_nums)
+    extra_links = []
+    if p["medium"] != "ink cartridges":
+        extra_links.append('<a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a>')
+    if p["slug"] == "deskjet-1000" and p["brand"] == "hp":
+        extra_links.append('<a href="/guides/hp-cartridge-numbers-by-region/">Why the number changes by country</a>')
+    extra_nav = "".join(" · " + l for l in extra_links)
+    pub = PUBLISHED if extra_links else None
     body = f'''<article class="prose wide"><h1>{E(p["name"])} {E(medium_word(p["medium"]))}: which cartridges fit</h1>
 <p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
 <div class="answer"><p><strong>Official numbers:</strong> {E(lead_nums)}.</p></div>
@@ -496,7 +509,7 @@ def printer_page(p, series, fam):
 {sib_html}
 {faq_html(faqs)}
 {sources_html(p["sources"])}
-<p><a href="/printers/{p["brand"]}/">All {E(BRANDS[p["brand"]])} models</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p>
+<p><a href="/printers/{p["brand"]}/">All {E(BRANDS[p["brand"]])} models</a> · <a href="/guides/find-the-model-number/">How to find the model number</a>{extra_nav}</p>
 </article>'''
     if p["medium"] == "ink bottles":
         body = body.replace(E(p["name"]) + " ink bottles: which cartridges fit", E(p["name"]) + " ink bottles: which supplies fit", 1)
@@ -508,7 +521,7 @@ def printer_page(p, series, fam):
     if sib and not sib.get("skip_page"):
         crumbs.append(("/printers/" + p["brand"] + "/" + sib["slug"] + "/", sib["name"]))
     crumbs.append((path, p["name"]))
-    write(path, page(path, title, desc, body, [article_ld(p["name"] + " supplies", path), faq_ld(faqs)], crumbs))
+    write(path, page(path, title, desc, body, [article_ld(p["name"] + " supplies", path, pub), faq_ld(faqs)], crumbs, lastmod=pub))
 
 def series_page(s):
     if s.get("skip_page"):
@@ -552,6 +565,11 @@ def series_page(s):
         ("Which model should I open?", "Match the name on the front of the printer to one of the " + str(len(members)) + " models below. The model page has the supply table."),
         ("Do these models use the same numbers?", share),
     ]
+    extra_links = []
+    if s["brand"] == "hp" and s["slug"] in ("deskjet-1110-series", "deskjet-1200"):
+        extra_links.append('<a href="/guides/hp-cartridge-numbers-by-region/">Why the number changes by country</a>')
+    extra_nav = "".join(" · " + l for l in extra_links)
+    pub = PUBLISHED if extra_links else None
     body = f'''<article class="prose wide"><h1>{E(s["name"])}</h1>
 <p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
 <div class="answer"><p>This series hub links every model we list from the manufacturer's compatibility pages. Open a model for the full table.</p></div>
@@ -559,9 +577,9 @@ def series_page(s):
 {cart_html}
 {faq_html(faqs)}
 {sources_html(srcs)}
-<p><a href="/printers/{s["brand"]}/">All {E(BRANDS[s["brand"]])} models</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p></article>'''
-    write(path, page(path, series_title(s["name"]), desc, body, [article_ld(s["name"], path), faq_ld(faqs)],
-                     [("/", "Home"), ("/printers/", "Printers"), ("/printers/" + s["brand"] + "/", BRANDS[s["brand"]]), (path, s["name"])]))
+<p><a href="/printers/{s["brand"]}/">All {E(BRANDS[s["brand"]])} models</a> · <a href="/guides/find-the-model-number/">How to find the model number</a>{extra_nav}</p></article>'''
+    write(path, page(path, series_title(s["name"]), desc, body, [article_ld(s["name"], path, pub), faq_ld(faqs)],
+                     [("/", "Home"), ("/printers/", "Printers"), ("/printers/" + s["brand"] + "/", BRANDS[s["brand"]]), (path, s["name"])], lastmod=pub))
 
 def cartridge_page(f):
     path = "/cartridges/" + f["slug"] + "/"
@@ -600,6 +618,11 @@ def cartridge_page(f):
         medium = "toner"
     faqs = [("Which printers use " + nice + "?", str(len(printers)) + " printers on the manufacturer lists checked " + TODAY_H + " are linked on this page. If your model is not listed, it was not on those pages.")]
     faqs.extend(find_faqs(f["brand"], medium if medium != "toner" or f["slug"] != "brother-dr-730" else "toner"))
+    extra_links = []
+    if medium != "ink cartridges":
+        extra_links.append('<a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a>')
+    extra_nav = "".join(" · " + l for l in extra_links)
+    pub = PUBLISHED if extra_links else None
     body = f'''<article class="prose wide"><h1>{E(title.split(":")[0])}: which printers use them</h1>
 <p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
 <div class="answer"><p><strong>{len(printers)} printers</strong> on the manufacturer lists below use this number. If your model is not in the list, it is not on the pages we checked.</p></div>
@@ -608,13 +631,13 @@ def cartridge_page(f):
 {related_cartridge_html(f)}
 {faq_html(faqs)}
 {sources_html(sources)}
-<p><a href="/cartridges/">All cartridges</a> · <a href="/printers/{f["brand"]}/">{E(BRANDS[f["brand"]])} printers</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p>
+<p><a href="/cartridges/">All cartridges</a> · <a href="/printers/{f["brand"]}/">{E(BRANDS[f["brand"]])} printers</a> · <a href="/guides/find-the-model-number/">How to find the model number</a>{extra_nav}</p>
 </article>'''
     # h1 may say "them" for a drum. Acceptable.
     title = fit_title([title, "Which printers use " + nice, nice + ": which printers"])
     write(path, page(path, title, desc, body,
-                    [article_ld(nice, path), faq_ld(faqs)],
-                    [("/", "Home"), ("/cartridges/", "Cartridges"), (path, nice)]))
+                    [article_ld(nice, path, pub), faq_ld(faqs)],
+                    [("/", "Home"), ("/cartridges/", "Cartridges"), (path, nice)], lastmod=pub))
 
 def related_cartridge_html(f):
     mine = {(sl, b) for sl, _n, b in f["printers"]}
@@ -648,14 +671,19 @@ def brand_page(brand, printers, series):
         ("Which " + BRANDS[brand] + " model should I open?", "Match the name on the front of the printer to one of the " + str(n) + " models. A series hub lists the models taken from that section of the manufacturer pages."),
         ("Which cartridge number should I use?", "Open the model page and read the table. The numbers are the ones " + BRANDS[brand] + " prints, last checked " + TODAY_H + ". We do not copy a store's compatible ink chart."),
     ]
+    extra_links = []
+    if brand == "hp":
+        extra_links.append('<a href="/guides/hp-cartridge-numbers-by-region/">Why the number changes by country</a>')
+    extra_nav = "".join(" · " + l for l in extra_links)
+    pub = PUBLISHED if extra_links else None
     body = f'''<h1>{E(BRANDS[brand])} ink and toner</h1>
 <p class="answer">Models and series taken from {E(BRANDS[brand])}'s own compatibility pages. Open a series, or jump to a single model.</p>
 <ul class="cards">{cards}</ul>
 {("<h2>Single models</h2><ul class=\"cols\">" + "".join(lone) + "</ul>") if lone else ""}
-<p><a href="/printers/">All printers</a> · <a href="/cartridges/">All cartridges</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p>
+<p><a href="/printers/">All printers</a> · <a href="/cartridges/">All cartridges</a> · <a href="/guides/find-the-model-number/">How to find the model number</a>{extra_nav}</p>
 {faq_html(faqs)}'''
     write(path, page(path, BRANDS[brand] + " printer ink and toner | " + BRAND, "Which cartridges, toner, or bottles " + BRANDS[brand] + " lists for " + str(n) + " printer models.", body, [faq_ld(faqs)],
-                     [("/", "Home"), ("/printers/", "Printers"), (path, BRANDS[brand])]))
+                     [("/", "Home"), ("/printers/", "Printers"), (path, BRANDS[brand])], lastmod=pub))
 
 def indexes(printers, series, fams):
     cards = []
@@ -666,8 +694,8 @@ def indexes(printers, series, fams):
         ("Which brand should I pick?", "Pick the brand printed on the printer. This page links HP, Canon, Epson, and Brother. The count under a brand is the number of models taken from that manufacturer's pages."),
         ("Which page should I open if I only know the cartridge number?", "Open the cartridge list and choose the number printed on the supply or the box."),
     ]
-    body = '<h1>Printers</h1><p class="answer">Pick a brand. Every model page cites the manufacturer page it was checked against on ' + TODAY_H + '.</p><ul class="cards">' + "".join(cards) + '</ul><p><a href="/cartridges/">Cartridges</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p>' + faq_html(printer_faqs)
-    write("/printers/", page("/printers/", "Printer ink and toner by model | " + BRAND, "Find the cartridge, toner, or bottle for an HP, Canon, Epson, or Brother printer.", body, [faq_ld(printer_faqs)], [("/", "Home"), ("/printers/", "Printers")]))
+    body = '<h1>Printers</h1><p class="answer">Pick a brand. Every model page cites the manufacturer page it was checked against on ' + TODAY_H + '.</p><ul class="cards">' + "".join(cards) + '</ul><p><a href="/cartridges/">Cartridges</a> · <a href="/guides/find-the-model-number/">How to find the model number</a> · <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a> · <a href="/guides/hp-cartridge-numbers-by-region/">Why the cartridge number changes by country</a></p>' + faq_html(printer_faqs)
+    write("/printers/", page("/printers/", "Printer ink and toner by model | " + BRAND, "Find the cartridge, toner, or bottle for an HP, Canon, Epson, or Brother printer.", body, [faq_ld(printer_faqs)], [("/", "Home"), ("/printers/", "Printers")], lastmod=PUBLISHED))
     items = []
     for slug in sorted(fams):
         f = fams[slug]
@@ -677,8 +705,8 @@ def indexes(printers, series, fams):
         ("Which cartridge page should I open?", "Open the number printed on the cartridge, toner, or bottle. The page lists the printers the manufacturer names for that number."),
         ("What if my printer is not listed on that page?", "It was not on the manufacturer pages checked " + TODAY_H + ". Open the printer by model, then confirm the number on the manufacturer page linked there."),
     ]
-    body = '<h1>Cartridges, toner, and bottles</h1><p class="answer">Pick a number to see the printers the manufacturer lists for it.</p><ul class="cols">' + "".join(items) + '</ul><p><a href="/printers/">Printers</a> · <a href="/guides/find-the-model-number/">How to find the model number</a></p>' + faq_html(cart_faqs)
-    write("/cartridges/", page("/cartridges/", "Ink and toner by cartridge number | " + BRAND, "Which printers use a cartridge, toner, or bottle number, from the manufacturer lists.", body, [faq_ld(cart_faqs)], [("/", "Home"), ("/cartridges/", "Cartridges")]))
+    body = '<h1>Cartridges, toner, and bottles</h1><p class="answer">Pick a number to see the printers the manufacturer lists for it.</p><ul class="cols">' + "".join(items) + '</ul><p><a href="/printers/">Printers</a> · <a href="/guides/find-the-model-number/">How to find the model number</a> · <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a></p>' + faq_html(cart_faqs)
+    write("/cartridges/", page("/cartridges/", "Ink and toner by cartridge number | " + BRAND, "Which printers use a cartridge, toner, or bottle number, from the manufacturer lists.", body, [faq_ld(cart_faqs)], [("/", "Home"), ("/cartridges/", "Cartridges")], lastmod=PUBLISHED))
 
 def guide():
     path = "/guides/find-the-model-number/"
@@ -700,9 +728,84 @@ def guide():
     ("Epson 212 ink", "https://epson.com/For-Home/Ink/Epson%26reg%3B-212%26reg%3B-Ink/i/T212"),
     ("Brother TN760", "https://www.brother-usa.com/p/ink-toner/TN760"),
 ])}
+<h2>Related guides</h2><p><a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle: which is yours?</a> · <a href="/guides/hp-cartridge-numbers-by-region/">Why HP cartridge numbers differ outside the US</a></p>
 <p><a href="/printers/">Browse printers</a> · <a href="/cartridges/">Browse cartridges</a></p>
 </article>'''
-    write(path, page(path, "Find the printer model and cartridge number", "How to read the model number on the printer and the cartridge number on the box.", body, [article_ld("Find the model number", path), faq_ld(faqs)], [("/", "Home"), (path, "Find the number")]))
+    write(path, page(path, "Find the printer model and cartridge number", "How to read the model number on the printer and the cartridge number on the box.", body, [article_ld("Find the model number", path, PUBLISHED), faq_ld(faqs)], [("/", "Home"), (path, "Find the number")], lastmod=PUBLISHED))
+
+def guide_ink_toner_bottle():
+    path = "/guides/ink-toner-or-bottle/"
+    title = "Ink cartridge, toner, or bottle: which is yours?"
+    desc = "How to tell if a printer uses ink cartridges, toner, or ink bottles, with examples from HP, Canon, Epson, and Brother support pages."
+    faqs = [
+        ("How can I tell without opening the printer?", "The model name is usually the clue. EcoTank and MegaTank models take ink bottles, LaserJet models and Brother's drum and toner models take toner, and the rest of the printers listed on this site take ink cartridges. Open the model page for the exact number."),
+        ("Is the toner drum the same part as the toner?", "No. Brother's DR730 and TN760 bundle page lists the toner and the drum as two separate numbers, TN-760 and DR-730, for the same printer."),
+        ("Does a tank printer still have a part number?", "Yes, but it is a bottle number, not a cartridge number. Epson's ET-2800 FAQ and Canon's MegaTank ink types article both print bottle numbers for their tank printers, not cartridge numbers."),
+    ]
+    rows = [
+        ("Ink cartridge", "Inkjet printers that take a small sealed cartridge", "HP DeskJet, OfficeJet, and ENVY; Canon PIXMA (non MegaTank); Epson WorkForce and Expression (non EcoTank); Brother inkjet", "/printers/hp/deskjet-2755e/", "HP DeskJet 2755e"),
+        ("Toner", "Laser printers that take a toner cartridge, sometimes with a separate drum", "HP LaserJet; Brother laser models such as the MFC-L2710DW", "/printers/hp/laserjet-pro-m428/", "HP LaserJet Pro M428"),
+        ("Ink bottle", "Tank printers refilled from a bottle, not a cartridge", "Epson EcoTank; Canon MegaTank (PIXMA G series, MAXIFY GX series)", "/printers/epson/et-2800/", "Epson EcoTank ET-2800"),
+    ]
+    table_rows = "".join(
+        f'<tr><td>{E(t)}</td><td>{E(d)}</td><td>{E(fam)}</td><td><a href="{E(href)}">{E(ex)}</a></td></tr>'
+        for t, d, fam, href, ex in rows
+    )
+    body = f'''<article class="prose"><h1>Ink cartridge, toner, or ink bottle: which does your printer use?</h1>
+<p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
+<div class="answer"><p><strong>Look at the supply type, not the price.</strong> This site lists three kinds: ink cartridges, toner, and ink bottles. The printer's own name is usually the clue.</p></div>
+<div class="tablewrap"><table class="list"><thead><tr><th scope="col">Supply type</th><th scope="col">What it is</th><th scope="col">Families on this site</th><th scope="col">Example model</th></tr></thead><tbody>{table_rows}</tbody></table></div>
+<h2>Ink cartridges</h2><p>Inkjet printers hold a small sealed cartridge inside a carriage. Most HP DeskJet, OfficeJet, and ENVY models, most Canon PIXMA models that are not MegaTank, most Epson WorkForce and Expression models that are not EcoTank, and Brother's inkjet models such as the <a href="/printers/brother/mfc-j4335dw/">MFC-J4335DW</a> are in this group.</p>
+<h2>Toner</h2><p>Laser printers use a toner cartridge, not a liquid ink cartridge. HP's replacement document for the LaserJet Pro MFP M428 lists toner cartridge 58A and the high yield 58X. Brother's TN760 page names TN-760 as a high yield black toner, and Brother's DR730 and TN760 bundle page lists a separate drum unit, DR-730, for the same printer.</p>
+<h2>Ink bottles</h2><p>Tank printers refill built in tanks from a bottle, not a cartridge. Epson's ET-2800 FAQ lists bottle part numbers 522120 black, 522220 yellow, 522320 magenta, and 522420 cyan. Canon's MegaTank ink types article lists bottle numbers such as GI-20, GI-21, and GI-290 for the PIXMA G series and MAXIFY GX series.</p>
+{faq_html(faqs)}
+{sources_html([
+    ("HP LaserJet Pro MFP M329, M428, M429: replace the toner cartridge", "https://support.hp.com/us-en/document/c06398764"),
+    more.TN760,
+    more.DR_BUND,
+    more.ET2800,
+    more.GI_TYPES,
+])}
+<h2>Related guides</h2><p><a href="/guides/find-the-model-number/">Find the model number</a> · <a href="/guides/hp-cartridge-numbers-by-region/">Why HP cartridge numbers differ outside the US</a></p>
+<p><a href="/printers/">Browse printers</a> · <a href="/cartridges/">Browse cartridges</a> · <a href="/cartridges/brother-tn-760/">Brother TN-760 printers</a> · <a href="/cartridges/canon-gi-21/">Canon GI-21 printers</a> · <a href="/cartridges/epson-522/">Epson 522 printers</a></p>
+</article>'''
+    write(path, page(path, title, desc, body, [article_ld(title, path, PUBLISHED), faq_ld(faqs)], [("/", "Home"), (path, "Ink, toner, or bottle")], lastmod=PUBLISHED))
+
+def guide_hp_region():
+    path = "/guides/hp-cartridge-numbers-by-region/"
+    title = "Why HP cartridge numbers differ outside the US"
+    desc = "HP prints a different ink cartridge number for the same printer in North America, Europe, and other regions, from HP's own cartridge list."
+    raw = json.load(open(os.path.join(ROOT, "_build", "hp_catalog.json"), encoding="utf-8"))
+    want = {
+        "HP DeskJet 1000 printers": ("/printers/hp/deskjet-1000/", "HP DeskJet 1000"),
+        "HP DeskJet 1110 All-in-One": ("/printers/hp/deskjet-1110-series/", "HP DeskJet 1110 All-in-One"),
+        "HP DeskJet 1200 Series": ("/printers/hp/deskjet-1200/", "HP DeskJet 1200 Series"),
+    }
+    examples = []
+    for s in raw["sections"]:
+        if s["title"] in want and len(s.get("regions", [])) > 1:
+            examples.append((s["title"], s["regions"], want[s["title"]]))
+    blocks = []
+    for sec_title, regions, (href, link_text) in examples:
+        rows = "".join("<tr><th scope=\"row\">" + E(clean(r["region"])) + "</th><td>" + E(clean(r["text"])) + "</td></tr>" for r in regions)
+        blocks.append(f'<h3><a href="{E(href)}">{E(link_text)}</a></h3><div class="tablewrap"><table class="list"><thead><tr><th scope="col">Region on HP\'s list</th><th scope="col">Numbers HP prints</th></tr></thead><tbody>{rows}</tbody></table></div>')
+    faqs = [
+        ("Does this happen on every HP printer?", "Only where HP's own cartridge document prints more than one region column for a model. Most of the models on this site show only one column. Open the model page and look for an \"Other regions on the same table\" section."),
+        ("Which number should I buy?", "The one HP lists for the region your printer was sold in. The model page and the source document linked there are the ones to check."),
+        ("Does Canon, Epson, or Brother do the same thing?", "Not in the pages this site checked " + TODAY_H + ". Those pages print one number per model, not a region table. This pattern is specific to the HP document we cite below."),
+    ]
+    body = f'''<article class="prose"><h1>Why HP lists a different cartridge number outside the US</h1>
+<p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
+<div class="answer"><p><strong>HP's own cartridge document lists more than one column for some models.</strong> The ink is the same color, but the part number HP prints changes by region.</p></div>
+<p>HP's support document, {ext(HP_TITLE, HP_URL)}, groups some printer sections into regional columns, such as North America, Western Europe, and Latin America. The examples below are HP's own region columns for three HP DeskJet sections, not a guess.</p>
+{"".join(blocks)}
+<h2>What this means for you</h2><p>If you bought the printer in a different country than the one a cartridge listing assumes, the number on the box may not match a number copied from a US page. Open the model page on this site, read the main table for your number, and check the "Other regions on the same table" section there if one is present.</p>
+{faq_html(faqs)}
+{sources_html([(HP_TITLE, HP_URL)])}
+<h2>Related guides</h2><p><a href="/guides/find-the-model-number/">Find the model number</a> · <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a></p>
+<p><a href="/printers/hp/">All HP models</a> · <a href="/printers/">All printers</a></p>
+</article>'''
+    write(path, page(path, title, desc, body, [article_ld(title, path, PUBLISHED), faq_ld(faqs)], [("/", "Home"), (path, "HP numbers by region")], lastmod=PUBLISHED))
 
 def home(printers, fams):
     picks = [
@@ -742,9 +845,9 @@ def home(printers, fams):
 </section>
 <h2>Brands</h2><ul class="cards">{brands}</ul>
 <h2>Often looked up</h2><ul class="cols">{links}</ul>
-<h2>How to read the numbers</h2><p>The model number is on the printer. The cartridge, toner, or bottle number is on the box. <a href="/guides/find-the-model-number/">How to find both</a>. Numbers change by country, and a high yield pack is not a different color. <a href="/methodology/">How we check a page</a>.</p>
+<h2>How to read the numbers</h2><p>The model number is on the printer. The cartridge, toner, or bottle number is on the box. <a href="/guides/find-the-model-number/">How to find both</a>. Not sure which supply type your printer takes? <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a> Numbers change by country, and a high yield pack is not a different color. <a href="/guides/hp-cartridge-numbers-by-region/">Why some HP numbers differ by country</a>. <a href="/methodology/">How we check a page</a>.</p>
 {faq_html(faqs)}'''
-    write("/", page("/", "Which Ink Fits: printer ink and toner by model", "Which cartridge, toner, or ink bottle fits your HP, Canon, Epson, or Brother printer, from the manufacturer lists.", body, [faq_ld(faqs)]))
+    write("/", page("/", "Which Ink Fits: printer ink and toner by model", "Which cartridge, toner, or ink bottle fits your HP, Canon, Epson, or Brother printer, from the manufacturer lists.", body, [faq_ld(faqs)], lastmod=PUBLISHED))
 
 def simple(path, title, desc, h1, inner, crumb=None, legal=False):
     body = '<article class="prose"><h1>' + E(h1) + "</h1>" + inner + "</article>"
@@ -863,7 +966,7 @@ def extras(printers, series, fams):
     bots = ["*", "Googlebot", "Bingbot", "Mediapartners-Google", "OAI-SearchBot", "ChatGPT-User", "GPTBot", "PerplexityBot", "Perplexity-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "Google-Extended", "Applebot", "Applebot-Extended", "DuckAssistBot", "Amazonbot", "CCBot", "Bytespider"]
     open(os.path.join(ROOT, "robots.txt"), "w").write("".join("User-agent: " + b + "\nAllow: /\n\n" for b in bots) + "Sitemap: " + BASE + "sitemap.xml\n")
     open(os.path.join(ROOT, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join("<url><loc>" + url(p) + "</loc><lastmod>" + m + "</lastmod></url>\n" for p, m in PAGES) + "</urlset>\n")
-    lines = ["# " + BRAND, "", "> Which Ink Fits (whichinkfits.com) lists the ink, toner, and bottle numbers HP, Canon, Epson, and Brother publish for a printer model, and the printers a number fits. Checked " + TODAY_H + ".", "", "Independent. Not affiliated with any printer maker. Confirm the number on the manufacturer page.", "", "## Guides", f"- [Find the model number]({url('/guides/find-the-model-number/')})", f"- [Sources and methods]({url('/methodology/')})", "", "## Printers"]
+    lines = ["# " + BRAND, "", "> Which Ink Fits (whichinkfits.com) lists the ink, toner, and bottle numbers HP, Canon, Epson, and Brother publish for a printer model, and the printers a number fits. Checked " + TODAY_H + ".", "", "Independent. Not affiliated with any printer maker. Confirm the number on the manufacturer page.", "", "## Guides", f"- [Find the model number]({url('/guides/find-the-model-number/')})", f"- [Ink cartridge, toner, or bottle?]({url('/guides/ink-toner-or-bottle/')})", f"- [Why HP cartridge numbers differ outside the US]({url('/guides/hp-cartridge-numbers-by-region/')})", f"- [Sources and methods]({url('/methodology/')})", "", "## Printers"]
     for p in printers:
         lines.append(f"- [{p['name']}]({url('/printers/' + p['brand'] + '/' + p['slug'] + '/')})")
     lines.append("")
@@ -901,6 +1004,8 @@ if __name__ == "__main__":
         brand_page(b, printers, series)
     indexes(printers, series, fams)
     guide()
+    guide_ink_toner_bottle()
+    guide_hp_region()
     home(printers, fams)
     legal_pages()
     not_found()
