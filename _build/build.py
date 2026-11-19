@@ -26,11 +26,16 @@ TODAY_H = "16 Nov 2026"
 # page itself went into the sitemap, so lastmod is not backdated or invented.
 PUBLISHED = "2026-11-18"
 PUBLISHED_H = "18 Nov 2026"
+# Material content changes from the 19 Nov 2026 SEO batch.
+PUBLISHED_TODAY = "2026-11-19"
+PUBLISHED_TODAY_H = "19 Nov 2026"
 INDEXNOW_KEY = "4f77a5e3aae98a8a1031b02723738f83"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 # Measurement id from the GA4 property. Empty until the owner sets G-XXXXXXXXXX.
 # python3 _build/check.py --launch fails while this is empty.
 GA4_ID = "G-HQK26SX9HN"
+# AdSense publisher id. Head script + meta only; no ad units yet.
+ADSENSE_CLIENT = "ca-pub-5681559774142917"
 HP_URL = "https://support.hp.com/us-en/document/ish_2405837-1980674-16"
 HP_TITLE = "Which cartridges work with my HP printer?"
 LEGAL_LINE = "© 2026 Joshua Israel Ventures LLC. All rights reserved. Which Ink Fits is a trade name of Joshua Israel Ventures LLC, a Florida limited liability company."
@@ -226,6 +231,13 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal
     robots = "noindex, follow" if (noindex or not LAUNCH) else "index, follow, max-image-preview:large"
     beacon = ("<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{\"token\": \"" + CF_BEACON_TOKEN + "\"}'></script><!-- End Cloudflare Web Analytics -->") if LAUNCH else "<!-- cf-beacon: added by the launch build -->"
     ga4_head, ga4_body = analytics_markup()
+    adsense_head = ""
+    if LAUNCH and ADSENSE_CLIENT:
+        adsense_head = (
+            '<meta name="google-adsense-account" content="' + E(ADSENSE_CLIENT) + '">\n'
+            '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='
+            + E(ADSENSE_CLIENT) + '" crossorigin="anonymous"></script>'
+        )
     search = '<script src="/assets/search-index.js"></script>' if path == "/" else ""
     foot_legal = '<p class="legal-line">' + LEGAL_LINE + "</p>" if legal else ""
     foot_links = [
@@ -242,7 +254,8 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal
 <title>{E(title)}</title><meta name="description" content="{E(desc)}"><link rel="canonical" href="{canon}">
 <meta name="robots" content="{robots}">
 <meta property="og:type" content="{og_type}"><meta property="og:site_name" content="{BRAND}"><meta property="og:title" content="{E(title)}"><meta property="og:description" content="{E(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{url('/og.png')}"><meta property="og:image:alt" content="{BRAND}"><meta property="og:locale" content="en_US"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{E(title)}"><meta name="twitter:description" content="{E(desc)}"><meta name="twitter:image" content="{url('/og.png')}">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/style.css?v=2">{ldh}
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/style.css?v=3">{ldh}
+{adsense_head}
 {ga4_head}
 </head><body><a class="skip" href="#main">Skip to content</a>
 <header class="site"><div class="wrap"><div class="brandwrap">{mark}<a class="brand" href="/"><span>{BRAND}</span></a></div><nav class="main" aria-label="Main">{nav}</nav></div></header>
@@ -272,8 +285,38 @@ def faq_html(faqs):
     return '<section class="faq" aria-labelledby="faq-h"><h2 id="faq-h">Frequently asked questions</h2>' + "".join(
         "<details><summary>" + E(q) + "</summary><p>" + E(a) + "</p></details>" for q, a in faqs) + "</section>"
 
-def sources_html(sources):
-    return '<section class="sources" aria-labelledby="src-h"><h2 id="src-h">Sources</h2><ul>' + "".join("<li>" + ext(t, u) + "</li>" for t, u in sources) + f'<li>Retrieved {TODAY_H}.</li></ul><p class="note">Which Ink Fits is independent and is not the manufacturer. Match the number on your printer and on the box, then confirm it on the source page.</p></section>'
+def sources_html(sources, retrieved=None):
+    when = retrieved or TODAY_H
+    return '<section class="sources" aria-labelledby="src-h"><h2 id="src-h">Sources</h2><ul>' + "".join("<li>" + ext(t, u) + "</li>" for t, u in sources) + f'<li>Retrieved {when}.</li></ul><p class="note">Which Ink Fits is independent and is not the manufacturer. Match the number on your printer and on the box, then confirm it on the source page.</p></section>'
+
+def compare_box_html(title, lines):
+    """Lookup/compare box for series and cartridge pages (engagement rule c)."""
+    items = "".join("<li>" + line + "</li>" for line in lines)
+    return (
+        '<aside class="compare" aria-label="' + E(title) + '">'
+        "<h2>" + E(title) + "</h2><ul>" + items + "</ul></aside>"
+    )
+
+def next_reads_html(items, heading="Related reading"):
+    """3-4 closely related next-read links. Thumb optional until a bank photo exists."""
+    cards = []
+    for it in items:
+        href, label, blurb = it[0], it[1], it[2]
+        thumb = it[3] if len(it) > 3 else None
+        media = ""
+        if thumb:
+            media = (
+                '<a class="nr-thumb" href="' + E(href) + '">'
+                '<img src="' + E(thumb) + '" width="320" height="180" alt="" loading="lazy"></a>'
+            )
+        cards.append(
+            '<li>' + media + '<div class="nr-copy"><a href="' + E(href) + '">' + E(label) + "</a>"
+            "<p>" + E(blurb) + "</p></div></li>"
+        )
+    return (
+        '<section class="nextreads" aria-labelledby="nr-h"><h2 id="nr-h">' + E(heading) + "</h2>"
+        '<ul class="nr-list">' + "".join(cards) + "</ul></section>"
+    )
 
 def supply_table(rows, source_url):
     body = []
@@ -350,7 +393,12 @@ def load_hp():
             "info": clean(first["info"]),
         }
         printers.append(rec)
-        series.setdefault(series_slug, {"slug": series_slug, "name": series_name, "brand": "hp", "info": clean(first["info"]), "members": []})
+        series.setdefault(series_slug, {
+            "slug": series_slug, "name": series_name, "brand": "hp",
+            "info": clean(first["info"]), "members": [],
+            "regions": first["regions"] if first.get("kind") == "table" else [],
+            "supplies": [norm_supply("hp", r) for r in first.get("supplies", [])],
+        })
         series[series_slug]["members"].append(slug)
     # ENVY 6055e is a named model on HP's support site, filed under the ENVY 6000e series.
     envy = next((p for p in printers if p["slug"] == "envy-6000"), None)
@@ -523,6 +571,101 @@ def printer_page(p, series, fam):
     crumbs.append((path, p["name"]))
     write(path, page(path, title, desc, body, [article_ld(p["name"] + " supplies", path, pub), faq_ld(faqs)], crumbs, lastmod=pub))
 
+def series_enrichment(s, members, nums):
+    """Series-specific facts for thin hubs. Returns (extra_html, faqs_extra, compare_lines, next_reads, pub)."""
+    slug = s["slug"]
+    brand = s["brand"]
+    if brand == "hp" and slug == "deskjet-1200":
+        regions = s.get("regions") or []
+        region_rows = "".join(
+            "<tr><th scope=\"row\">" + E(clean(r["region"])) + "</th><td>" + E(clean(r["text"])) + "</td></tr>"
+            for r in regions
+        )
+        region_block = ""
+        if region_rows:
+            region_block = (
+                "<h2>What HP prints by region for this series</h2>"
+                "<p>HP's cartridge document puts the DeskJet 1200 Series in a region table. "
+                "North America and Asia Pacific (excluding India, China, Japan, and Indonesia) list "
+                "<a href=\"/cartridges/hp-67/\">HP 67 Black</a> and HP 67 Tri-color. "
+                "Other columns print different numbers for the same printers.</p>"
+                '<div class="tablewrap"><table class="list"><thead><tr><th scope="col">HP\'s column heading</th>'
+                '<th scope="col">Numbers HP prints</th></tr></thead><tbody>' + region_rows + "</tbody></table></div>"
+                "<p>Those other region numbers are quoted here from HP's table. They do not yet have their own cartridge pages on this site. "
+                '<a href="/guides/hp-cartridge-numbers-by-region/">Why HP cartridge numbers differ outside the US</a>.</p>'
+            )
+        extra = (
+            "<h2>What is distinct about this series</h2>"
+            "<p>The DeskJet 1200 Series hub covers three named models: "
+            '<a href="/printers/hp/deskjet-1210/">DeskJet 1210</a>, '
+            '<a href="/printers/hp/deskjet-1212/">DeskJet 1212</a>, and '
+            '<a href="/printers/hp/deskjet-1255/">DeskJet 1255</a>. '
+            "On HP's US column checked " + TODAY_H + ", every one of those models lists only cartridge family 67 "
+            "(black and tri-color). There is no photo cartridge and no second black number on that column.</p>"
+            "<p>That is different from older DeskJet All-in-One hubs such as the "
+            '<a href="/printers/hp/deskjet-f4100/">DeskJet F4100 All-in-One</a>, where HP lists several black, '
+            "tri-color, and photo numbers on the same section.</p>"
+            + region_block
+        )
+        faqs_extra = [
+            ("Is HP 67 the only US number for the DeskJet 1200 Series?",
+             "On HP's North America and Asia Pacific column for this series, yes: HP 67 Black and HP 67 Tri-color. Other region columns on the same table print 123, 305, or 805 instead."),
+            ("Does this series list a high yield 67XL on HP's table?",
+             "The DeskJet 1200 Series section we extracted lists 67 Black and 67 Tri-color for the US column. Open a model page and the HP 67 cartridge page for the full family, including any high yield rows HP prints elsewhere."),
+        ]
+        compare = [
+            'Open a model: <a href="/printers/hp/deskjet-1210/">DeskJet 1210</a>, <a href="/printers/hp/deskjet-1212/">1212</a>, or <a href="/printers/hp/deskjet-1255/">1255</a>.',
+            'Check the cartridge: <a href="/cartridges/hp-67/">HP 67 printers</a>.',
+            'Compare another DeskJet hub: <a href="/printers/hp/deskjet-f4100/">DeskJet F4100 All-in-One</a>.',
+            'Region confusion? <a href="/guides/hp-cartridge-numbers-by-region/">HP numbers by country</a>.',
+        ]
+        reads = [
+            ("/cartridges/hp-67/", "HP 67: which printers it fits", "Every printer HP lists for cartridge family 67."),
+            ("/guides/hp-cartridge-numbers-by-region/", "Why HP numbers differ by country", "How HP's region columns change the part number."),
+            ("/printers/hp/deskjet-f4100/", "DeskJet F4100 All-in-One hub", "An older DeskJet series with several black and color numbers."),
+            ("/guides/find-the-model-number/", "Find the model number", "Where to read the name on the printer and the box."),
+        ]
+        return extra, faqs_extra, compare, reads, PUBLISHED_TODAY
+    if brand == "hp" and slug == "deskjet-f4100":
+        extra = (
+            "<h2>What is distinct about this series</h2>"
+            "<p>The DeskJet F4100 All-in-One hub covers ten named models (F4135 through F4194). "
+            "HP's section for this family is a bullet list, not a region table. On the list checked " + TODAY_H + ", "
+            "every model shows the same five numbers: "
+            '<a href="/cartridges/hp-21/">21</a> and <a href="/cartridges/hp-54/">54</a> Black, '
+            '<a href="/cartridges/hp-57/">57</a> and <a href="/cartridges/hp-22/">22</a> Tri-color, and '
+            '<a href="/cartridges/hp-58/">58</a> Photo.</p>'
+            "<p>Two black numbers and two tri-color numbers on one printer section means HP prints more than one "
+            "official option per color. The model page table lists each row. It does not tell you to install every "
+            "number at once. Confirm the number on the cartridge you have, then on HP's page.</p>"
+            "<p>This is not the DeskJet 1200 Series. That newer hub uses family "
+            '<a href="/cartridges/hp-67/">67</a> on its US column and has a multi-region table. '
+            "F4100 keeps the older 21 / 54 / 57 / 22 / 58 set and has no region columns in the extract we use.</p>"
+            "<h2>How to match your F41xx label</h2>"
+            "<p>Read the full model on the front of the printer (for example F4180 or F4194), then open that model card below. "
+            "The series name F4100 alone is the hub. The supply table lives on the model page.</p>"
+        )
+        faqs_extra = [
+            ("Why are there two black numbers and two tri-color numbers?",
+             "HP's DeskJet F4100 All-in-One section lists 21 and 54 for black, and 57 and 22 for tri-color, plus 58 photo. Each number is an official HP row. Match the number on your cartridge; do not assume every row installs together."),
+            ("Is this the same ink as the DeskJet 1200 Series?",
+             "No. The DeskJet 1200 Series US column lists HP 67. The F4100 section lists 21, 54, 57, 22, and 58. Open the hub that matches the name on your printer."),
+        ]
+        compare = [
+            'Pick the exact F41xx model in the cards below, or start at <a href="/printers/hp/deskjet-f4180/">DeskJet F4180</a>.',
+            'Check a number: <a href="/cartridges/hp-21/">HP 21</a>, <a href="/cartridges/hp-54/">54</a>, <a href="/cartridges/hp-22/">22</a>, <a href="/cartridges/hp-57/">57</a>, or <a href="/cartridges/hp-58/">58</a>.',
+            'Compare a newer DeskJet hub: <a href="/printers/hp/deskjet-1200/">DeskJet 1200 Series</a> (HP 67).',
+            'Not sure it is ink? <a href="/guides/ink-toner-or-bottle/">Ink, toner, or bottle?</a>.',
+        ]
+        reads = [
+            ("/cartridges/hp-21/", "HP 21: which printers it fits", "Printers HP lists for cartridge 21."),
+            ("/cartridges/hp-54/", "HP 54: which printers it fits", "The other black number on this F4100 section."),
+            ("/printers/hp/deskjet-1200/", "DeskJet 1200 Series hub", "A later DeskJet series on HP 67, with region columns."),
+            ("/guides/ink-toner-or-bottle/", "Ink cartridge, toner, or bottle?", "How to tell which supply type you have."),
+        ]
+        return extra, faqs_extra, compare, reads, PUBLISHED_TODAY
+    return "", [], [], [], None
+
 def series_page(s):
     if s.get("skip_page"):
         return
@@ -565,18 +708,30 @@ def series_page(s):
         ("Which model should I open?", "Match the name on the front of the printer to one of the " + str(len(members)) + " models below. The model page has the supply table."),
         ("Do these models use the same numbers?", share),
     ]
+    extra_html, faqs_extra, compare_lines, reads, enrich_pub = series_enrichment(s, members, nums)
+    faqs.extend(faqs_extra)
+    compare = compare_box_html("Check another model or number", compare_lines) if compare_lines else ""
+    mid_reads = next_reads_html(reads[:2], "Keep reading") if reads else ""
+    end_reads = next_reads_html(reads, "Related reading") if reads else ""
     extra_links = []
     if s["brand"] == "hp" and s["slug"] in ("deskjet-1110-series", "deskjet-1200"):
         extra_links.append('<a href="/guides/hp-cartridge-numbers-by-region/">Why the number changes by country</a>')
+    if enrich_pub:
+        extra_links.append('<a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a>')
     extra_nav = "".join(" · " + l for l in extra_links)
-    pub = PUBLISHED if extra_links else None
+    pub = enrich_pub or (PUBLISHED if extra_links else None)
+    verified = PUBLISHED_TODAY_H if enrich_pub else TODAY_H
     body = f'''<article class="prose wide"><h1>{E(s["name"])}</h1>
-<p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
+<p class="sub">By {BRAND} · Last verified {verified}</p>
 <div class="answer"><p>This series hub links every model we list from the manufacturer's compatibility pages. Open a model for the full table.</p></div>
 {info}<ul class="cards">{items}</ul>
+{extra_html}
 {cart_html}
+{compare}
+{mid_reads}
 {faq_html(faqs)}
 {sources_html(srcs)}
+{end_reads}
 <p><a href="/printers/{s["brand"]}/">All {E(BRANDS[s["brand"]])} models</a> · <a href="/guides/find-the-model-number/">How to find the model number</a>{extra_nav}</p></article>'''
     write(path, page(path, series_title(s["name"]), desc, body, [article_ld(s["name"], path, pub), faq_ld(faqs)],
                      [("/", "Home"), ("/printers/", "Printers"), ("/printers/" + s["brand"] + "/", BRANDS[s["brand"]]), (path, s["name"])], lastmod=pub))
@@ -721,6 +876,17 @@ def guide():
 <h2>On the printer</h2><p>The model is the name on the front, such as DeskJet 2755e, PIXMA TR4720, EcoTank ET-2800, or MFC-L2710DW. Series names are shorter than the full model. If you only know the series, start at the series hub and then match the rest of the name.</p>
 <h2>On the cartridge or bottle</h2><p>Ink cartridges show a number such as 67, PG-275, or 212. Toner shows a number such as TN-760 or 58A. Tank printers use a bottle such as GI-21 or 522, and the lead on those pages says so. High yield packs add XL or a similar mark. The color is printed next to the number.</p>
 <h2>Then check the source</h2><p>Each page links the manufacturer document we used. Cartridge numbers differ by country. HP's pages quote the other columns when HP prints them. <a href="/methodology/">Sources and methods</a>.</p>
+{compare_box_html("Check another path", [
+    'Have a printer name? Open it from <a href="/printers/">Printers</a>.',
+    'Have a cartridge number? Open it from <a href="/cartridges/">Cartridges</a>.',
+    'Not sure it is a cartridge? <a href="/guides/ink-toner-or-bottle/">Ink, toner, or bottle?</a>.',
+])}
+{next_reads_html([
+    ("/guides/ink-toner-or-bottle/", "Ink cartridge, toner, or bottle?", "How to tell which supply type your printer takes."),
+    ("/guides/hp-cartridge-numbers-by-region/", "Why HP numbers differ by country", "When HP prints a different part number abroad."),
+    ("/cartridges/hp-67/", "HP 67: which printers it fits", "A common DeskJet cartridge family."),
+    ("/printers/", "Browse printers", "Start from the brand list when you know the model."),
+], "Keep reading")}
 {faq_html(faqs)}
 {sources_html([
     (HP_TITLE, HP_URL),
@@ -728,10 +894,15 @@ def guide():
     ("Epson 212 ink", "https://epson.com/For-Home/Ink/Epson%26reg%3B-212%26reg%3B-Ink/i/T212"),
     ("Brother TN760", "https://www.brother-usa.com/p/ink-toner/TN760"),
 ])}
-<h2>Related guides</h2><p><a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle: which is yours?</a> · <a href="/guides/hp-cartridge-numbers-by-region/">Why HP cartridge numbers differ outside the US</a></p>
+{next_reads_html([
+    ("/guides/ink-toner-or-bottle/", "Ink cartridge, toner, or bottle?", "How to tell which supply type your printer takes."),
+    ("/guides/hp-cartridge-numbers-by-region/", "Why HP numbers differ by country", "When HP prints a different part number abroad."),
+    ("/cartridges/hp-67/", "HP 67: which printers it fits", "A common DeskJet cartridge family."),
+    ("/printers/", "Browse printers", "Start from the brand list when you know the model."),
+])}
 <p><a href="/printers/">Browse printers</a> · <a href="/cartridges/">Browse cartridges</a></p>
 </article>'''
-    write(path, page(path, "Find the printer model and cartridge number", "How to read the model number on the printer and the cartridge number on the box.", body, [article_ld("Find the model number", path, PUBLISHED), faq_ld(faqs)], [("/", "Home"), (path, "Find the number")], lastmod=PUBLISHED))
+    write(path, page(path, "Find the printer model and cartridge number", "How to read the model number on the printer and the cartridge number on the box.", body, [article_ld("Find the model number", path, PUBLISHED_TODAY), faq_ld(faqs)], [("/", "Home"), (path, "Find the number")], lastmod=PUBLISHED_TODAY))
 
 def guide_ink_toner_bottle():
     path = "/guides/ink-toner-or-bottle/"
@@ -758,6 +929,17 @@ def guide_ink_toner_bottle():
 <h2>Ink cartridges</h2><p>Inkjet printers hold a small sealed cartridge inside a carriage. Most HP DeskJet, OfficeJet, and ENVY models, most Canon PIXMA models that are not MegaTank, most Epson WorkForce and Expression models that are not EcoTank, and Brother's inkjet models such as the <a href="/printers/brother/mfc-j4335dw/">MFC-J4335DW</a> are in this group.</p>
 <h2>Toner</h2><p>Laser printers use a toner cartridge, not a liquid ink cartridge. HP's replacement document for the LaserJet Pro MFP M428 lists toner cartridge 58A and the high yield 58X. Brother's TN760 page names TN-760 as a high yield black toner, and Brother's DR730 and TN760 bundle page lists a separate drum unit, DR-730, for the same printer.</p>
 <h2>Ink bottles</h2><p>Tank printers refill built in tanks from a bottle, not a cartridge. Epson's ET-2800 FAQ lists bottle part numbers 522120 black, 522220 yellow, 522320 magenta, and 522420 cyan. Canon's MegaTank ink types article lists bottle numbers such as GI-20, GI-21, and GI-290 for the PIXMA G series and MAXIFY GX series.</p>
+{compare_box_html("Check another supply type", [
+    'Inkjet cartridge example: <a href="/printers/hp/deskjet-2755e/">HP DeskJet 2755e</a>.',
+    'Toner example: <a href="/printers/hp/laserjet-pro-m428/">HP LaserJet Pro M428</a>.',
+    'Ink bottle example: <a href="/printers/epson/et-2800/">Epson EcoTank ET-2800</a>.',
+])}
+{next_reads_html([
+    ("/guides/find-the-model-number/", "Find the model number", "Where the model and cartridge numbers are printed."),
+    ("/cartridges/brother-tn-760/", "Brother TN-760 printers", "A high yield toner page with ISO page yield notes."),
+    ("/cartridges/epson-522/", "Epson 522 bottles", "Bottle numbers for EcoTank ET-2800."),
+    ("/guides/hp-cartridge-numbers-by-region/", "Why HP numbers differ by country", "When the same printer gets a different HP number abroad."),
+], "Keep reading")}
 {faq_html(faqs)}
 {sources_html([
     ("HP LaserJet Pro MFP M329, M428, M429: replace the toner cartridge", "https://support.hp.com/us-en/document/c06398764"),
@@ -766,10 +948,15 @@ def guide_ink_toner_bottle():
     more.ET2800,
     more.GI_TYPES,
 ])}
-<h2>Related guides</h2><p><a href="/guides/find-the-model-number/">Find the model number</a> · <a href="/guides/hp-cartridge-numbers-by-region/">Why HP cartridge numbers differ outside the US</a></p>
+{next_reads_html([
+    ("/guides/find-the-model-number/", "Find the model number", "Where the model and cartridge numbers are printed."),
+    ("/cartridges/brother-tn-760/", "Brother TN-760 printers", "A high yield toner page with ISO page yield notes."),
+    ("/cartridges/epson-522/", "Epson 522 bottles", "Bottle numbers for EcoTank ET-2800."),
+    ("/guides/hp-cartridge-numbers-by-region/", "Why HP numbers differ by country", "When the same printer gets a different HP number abroad."),
+])}
 <p><a href="/printers/">Browse printers</a> · <a href="/cartridges/">Browse cartridges</a> · <a href="/cartridges/brother-tn-760/">Brother TN-760 printers</a> · <a href="/cartridges/canon-gi-21/">Canon GI-21 printers</a> · <a href="/cartridges/epson-522/">Epson 522 printers</a></p>
 </article>'''
-    write(path, page(path, title, desc, body, [article_ld(title, path, PUBLISHED), faq_ld(faqs)], [("/", "Home"), (path, "Ink, toner, or bottle")], lastmod=PUBLISHED))
+    write(path, page(path, title, desc, body, [article_ld(title, path, PUBLISHED_TODAY), faq_ld(faqs)], [("/", "Home"), (path, "Ink, toner, or bottle")], lastmod=PUBLISHED_TODAY))
 
 def guide_hp_region():
     path = "/guides/hp-cartridge-numbers-by-region/"
@@ -800,12 +987,28 @@ def guide_hp_region():
 <p>HP's support document, {ext(HP_TITLE, HP_URL)}, groups some printer sections into regional columns, such as North America, Western Europe, and Latin America. The examples below are HP's own region columns for three HP DeskJet sections, not a guess.</p>
 {"".join(blocks)}
 <h2>What this means for you</h2><p>If you bought the printer in a different country than the one a cartridge listing assumes, the number on the box may not match a number copied from a US page. Open the model page on this site, read the main table for your number, and check the "Other regions on the same table" section there if one is present.</p>
+{compare_box_html("Check another HP path", [
+    'DeskJet 1200 Series (has a region table): <a href="/printers/hp/deskjet-1200/">open the hub</a>.',
+    'HP 67 cartridge page: <a href="/cartridges/hp-67/">which printers use 67</a>.',
+    'Find the model first: <a href="/guides/find-the-model-number/">model and cartridge numbers</a>.',
+])}
+{next_reads_html([
+    ("/printers/hp/deskjet-1200/", "HP DeskJet 1200 Series", "A series that shows HP 67 in one column and other numbers abroad."),
+    ("/guides/find-the-model-number/", "Find the model number", "Read the name on the printer before you buy ink."),
+    ("/guides/ink-toner-or-bottle/", "Ink cartridge, toner, or bottle?", "Confirm the supply type before the part number."),
+    ("/cartridges/hp-67/", "HP 67: which printers it fits", "Printers on the US column for family 67."),
+], "Keep reading")}
 {faq_html(faqs)}
 {sources_html([(HP_TITLE, HP_URL)])}
-<h2>Related guides</h2><p><a href="/guides/find-the-model-number/">Find the model number</a> · <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a></p>
+{next_reads_html([
+    ("/printers/hp/deskjet-1200/", "HP DeskJet 1200 Series", "A series that shows HP 67 in one column and other numbers abroad."),
+    ("/guides/find-the-model-number/", "Find the model number", "Read the name on the printer before you buy ink."),
+    ("/guides/ink-toner-or-bottle/", "Ink cartridge, toner, or bottle?", "Confirm the supply type before the part number."),
+    ("/cartridges/hp-67/", "HP 67: which printers it fits", "Printers on the US column for family 67."),
+])}
 <p><a href="/printers/hp/">All HP models</a> · <a href="/printers/">All printers</a></p>
 </article>'''
-    write(path, page(path, title, desc, body, [article_ld(title, path, PUBLISHED), faq_ld(faqs)], [("/", "Home"), (path, "HP numbers by region")], lastmod=PUBLISHED))
+    write(path, page(path, title, desc, body, [article_ld(title, path, PUBLISHED_TODAY), faq_ld(faqs)], [("/", "Home"), (path, "HP numbers by region")], lastmod=PUBLISHED_TODAY))
 
 def home(printers, fams):
     picks = [
@@ -882,10 +1085,10 @@ def legal_pages():
 <h2>Disclaimer of warranties and limitation of liability</h2><p>The site is provided as is. To the fullest extent permitted by law, Joshua Israel Ventures LLC is not liable for a purchase you make from a number on this site. Our total liability for a claim relating to the site is limited to 100 US dollars.</p>
 <h2>Governing law</h2><p>These terms are governed by the laws of the State of Florida, without regard to conflict of law rules.</p>
 <h2>Changes</h2><p>The date above is the current version. Questions: <a href="/contact/">contact</a>.</p>'''),
-        "/privacy/": ("Privacy", f'''<p>Last updated {D}. Which Ink Fits (whichinkfits.com) is a trade name of Joshua Israel Ventures LLC, a Florida limited liability company.</p>
-<h2>Analytics</h2><p>The launch build uses Cloudflare Web Analytics and Google Analytics 4.</p><p>Cloudflare Web Analytics is on every launch page and counts page views. That product does not use cookies and does not track you across other sites.</p><p>Google Analytics 4 loads only after you accept the banner. Before that choice, Consent Mode v2 leaves analytics storage and ad storage denied, and the GA4 script is not requested. Accepting turns on analytics storage only. Ad storage stays denied. The site shows no ads. The launch build puts Cookie settings in the footer so you can accept or reject later. Rejecting keeps Google Analytics 4 unloaded.</p>
+        "/privacy/": ("Privacy", f'''<p>Last updated {PUBLISHED_TODAY_H}. Which Ink Fits (whichinkfits.com) is a trade name of Joshua Israel Ventures LLC, a Florida limited liability company.</p>
+<h2>Analytics</h2><p>The launch build uses Cloudflare Web Analytics and Google Analytics 4.</p><p>Cloudflare Web Analytics is on every launch page and counts page views. That product does not use cookies and does not track you across other sites.</p><p>Google Analytics 4 loads only after you accept the banner. Before that choice, Consent Mode v2 leaves analytics storage and ad storage denied, and the GA4 script is not requested. Accepting turns on analytics storage only. Ad storage stays denied. The launch build puts Cookie settings in the footer so you can accept or reject later. Rejecting keeps Google Analytics 4 unloaded.</p>
 <h2>Email</h2><p>If you email joshuaofisrael@gmail.com, we use your address and message to reply, and we keep them only as long as we need to.</p>
-<h2>Advertising</h2><p>The site shows no ads and has no affiliate links. If that changes, we will update this page first. You would be able to opt out of personalized ads at Google's ad settings and at aboutads.info.</p>
+<h2>Advertising</h2><p>Which Ink Fits includes Google AdSense account tags (publisher {ADSENSE_CLIENT}) so the site can show ads. There are no affiliate links. Consent Mode keeps ad storage denied unless you later accept advertising cookies. When ads appear, they will be labeled. You can opt out of personalized ads at Google's ad settings and at aboutads.info. See the <a href="/ad-disclosure/">advertising disclosure</a> and our <a href="/ads.txt">ads.txt</a> file.</p>
 <h2>Hosting</h2><p>The site is hosted on GitHub Pages, which may log IP addresses for security.</p>
 <h2>Children</h2><p>The site is a general audience site. We do not knowingly collect information from children under 13.</p>'''),
         "/disclaimer/": ("Disclaimer", f'''<p>Last updated {D}.</p>
@@ -895,13 +1098,14 @@ def legal_pages():
         "/copyright/": ("Copyright and DMCA", f'''<p>Last updated {D}. Original text and design on Which Ink Fits are owned by Joshua Israel Ventures LLC. Facts are cited to the manufacturer pages. See the <a href="/image-policy/">image policy</a>.</p>
 <h2>Notice</h2><p>If you believe material on this site infringes a copyright you own, email <a href="mailto:joshuaofisrael@gmail.com">joshuaofisrael@gmail.com</a> with your name, a description of the work, the page address, a statement that you have a good faith belief the use is not authorized, a statement under penalty of perjury that the notice is accurate and that you are the owner or authorized to act for the owner, and your signature. We review notices and remove material where that is the right step.</p>
 <h2>Counter notice</h2><p>If we removed something you sent and you believe that was a mistake, you may send a counter notice with the details required by 17 U.S.C. section 512(g).</p>'''),
-        "/ad-disclosure/": ("Advertising disclosure", f'''<p>Last updated {D}. Which Ink Fits is free to use. The site shows no ads and has no affiliate links. We may add advertising or links to manufacturer and retailer pages later. If we do, the links will be labeled, and a manufacturer will not be able to change a cartridge list by paying us.</p>
+        "/ad-disclosure/": ("Advertising disclosure", f'''<p>Last updated {PUBLISHED_TODAY_H}. Which Ink Fits is free to use and has no affiliate links. The site includes Google AdSense account tags (publisher {ADSENSE_CLIENT}) so ads can appear. Ad units are not placed yet. When ads or sponsored links appear, they will be labeled. A manufacturer cannot change a cartridge list by paying us.</p>
 <p>Questions: <a href="/contact/">contact</a>.</p>'''),
     }
     for pth, (h1, inner) in legal.items():
         body = '<article class="prose"><h1>' + E(h1) + "</h1>" + inner + '<p class="legal-line">' + LEGAL_LINE + "</p></article>"
-        desc = "How Which Ink Fits uses Google Analytics 4 and Cloudflare Web Analytics." if pth == "/privacy/" else h1 + " for Which Ink Fits."
-        write(pth, page(pth, h1 + " | " + BRAND, desc, body, None, [("/", "Home"), (pth, h1)], legal=True))
+        desc = "How Which Ink Fits uses Google Analytics 4, Cloudflare Web Analytics, and AdSense." if pth == "/privacy/" else h1 + " for Which Ink Fits."
+        lm = PUBLISHED_TODAY if pth in ("/privacy/", "/ad-disclosure/") else None
+        write(pth, page(pth, h1 + " | " + BRAND, desc, body, None, [("/", "Home"), (pth, h1)], legal=True, lastmod=lm))
 
 def not_found():
     body = '<h1>Page not found</h1><p>That page is not in this guide. Try the <a href="/printers/">printer list</a> or search from the <a href="/">home page</a>.</p>'
@@ -963,6 +1167,7 @@ def images():
 def extras(printers, series, fams):
     open(os.path.join(ROOT, "CNAME"), "w").write("whichinkfits.com\n")
     open(os.path.join(ROOT, INDEXNOW_KEY + ".txt"), "w").write(INDEXNOW_KEY + "\n")
+    open(os.path.join(ROOT, "ads.txt"), "w").write("google.com, pub-5681559774142917, DIRECT, f08c47fec0942fa0\n")
     bots = ["*", "Googlebot", "Bingbot", "Mediapartners-Google", "OAI-SearchBot", "ChatGPT-User", "GPTBot", "PerplexityBot", "Perplexity-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "Google-Extended", "Applebot", "Applebot-Extended", "DuckAssistBot", "Amazonbot", "CCBot", "Bytespider"]
     open(os.path.join(ROOT, "robots.txt"), "w").write("".join("User-agent: " + b + "\nAllow: /\n\n" for b in bots) + "Sitemap: " + BASE + "sitemap.xml\n")
     open(os.path.join(ROOT, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join("<url><loc>" + url(p) + "</loc><lastmod>" + m + "</lastmod></url>\n" for p, m in PAGES) + "</urlset>\n")
