@@ -14,7 +14,6 @@ cartridges/hp-902
 cartridges/hp-916
 cartridges/hp-920
 cartridges/hp-923
-cartridges/hp-932
 cartridges/hp-934
 cartridges/hp-935
 cartridges/hp-936
