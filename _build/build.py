@@ -29,6 +29,11 @@ PUBLISHED_H = "18 Nov 2026"
 # Material content changes from the 19 Nov 2026 SEO batch.
 PUBLISHED_TODAY = "2026-11-19"
 PUBLISHED_TODAY_H = "19 Nov 2026"
+# Rechecks from the 20 Nov 2026 SEO batch. datePublished stays the day the
+# page first went up. dateModified and sitemap lastmod use this date only
+# where the words on that page changed.
+CHECKED_1120 = "2026-11-20"
+CHECKED_1120_H = "20 Nov 2026"
 INDEXNOW_KEY = "4f77a5e3aae98a8a1031b02723738f83"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 # Measurement id from the GA4 property. Empty until the owner sets G-XXXXXXXXXX.
@@ -287,9 +292,10 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal
 def ext(title, href):
     return '<a href="' + E(href) + '" rel="nofollow noopener" target="_blank">' + E(title) + "</a>"
 
-def article_ld(headline, path, published=None):
+def article_ld(headline, path, published=None, modified=None):
     d = published or TODAY
-    return {"@context": "https://schema.org", "@type": "Article", "headline": headline, "datePublished": d, "dateModified": d,
+    m = modified or d
+    return {"@context": "https://schema.org", "@type": "Article", "headline": headline, "datePublished": d, "dateModified": m,
             "image": url("/og.png"), "author": {"@type": "Organization", "name": BRAND, "url": BASE},
             "publisher": {"@type": "Organization", "name": BRAND, "url": BASE, "logo": {"@type": "ImageObject", "url": url("/logo.png")}},
             "mainEntityOfPage": url(path)}
@@ -314,7 +320,7 @@ def compare_box_html(title, lines):
         "<h2>" + E(title) + "</h2><ul>" + items + "</ul></aside>"
     )
 
-def next_reads_html(items, heading="Related reading"):
+def next_reads_html(items, heading="Related reading", hid="nr-h"):
     """3-4 closely related next-read links. Thumb optional until a bank photo exists."""
     cards = []
     for it in items:
@@ -323,23 +329,24 @@ def next_reads_html(items, heading="Related reading"):
         media = ""
         if thumb:
             media = (
-                '<a class="nr-thumb" href="' + E(href) + '">'
-                '<img src="' + E(thumb) + '" width="320" height="180" alt="" loading="lazy"></a>'
+                '<a class="nr-thumb" href="/image-policy/">'
+                '<img src="' + E(thumb) + '" width="320" height="180" alt="AI-generated image" loading="lazy"></a>'
             )
         cards.append(
             '<li>' + media + '<div class="nr-copy"><a href="' + E(href) + '">' + E(label) + "</a>"
             "<p>" + E(blurb) + "</p></div></li>"
         )
     return (
-        '<section class="nextreads" aria-labelledby="nr-h"><h2 id="nr-h">' + E(heading) + "</h2>"
+        '<section class="nextreads" aria-labelledby="' + E(hid) + '"><h2 id="' + E(hid) + '">' + E(heading) + "</h2>"
         '<ul class="nr-list">' + "".join(cards) + "</ul></section>"
     )
 
-def supply_table(rows, source_url):
+def supply_table(rows, source_url, verified=None):
+    when = verified or TODAY_H
     body = []
     for r in rows:
         y = r["yield_text"] or "Not published on the source page"
-        body.append("<tr><td>" + E(r["label"]) + "</td><td>" + E(r["color"]) + "</td><td>" + E(r["capacity"]) + "</td><td>" + E(y) + '</td><td><a href="' + E(source_url) + '" rel="nofollow noopener" target="_blank">Manufacturer page</a></td><td>' + TODAY_H + "</td></tr>")
+        body.append("<tr><td>" + E(r["label"]) + "</td><td>" + E(r["color"]) + "</td><td>" + E(r["capacity"]) + "</td><td>" + E(y) + '</td><td><a href="' + E(source_url) + '" rel="nofollow noopener" target="_blank">Manufacturer page</a></td><td>' + when + "</td></tr>")
     return '<div class="tablewrap"><table class="list"><thead><tr><th scope="col">Official number</th><th scope="col">Color</th><th scope="col">Size</th><th scope="col">Yield</th><th scope="col">Source</th><th scope="col">Last verified</th></tr></thead><tbody>' + "".join(body) + "</tbody></table></div>"
 
 def region_table(regions):
@@ -753,6 +760,111 @@ def series_page(s):
     write(path, page(path, series_title(s["name"]), desc, body, [article_ld(s["name"], path, pub), faq_ld(faqs)],
                      [("/", "Home"), ("/printers/", "Printers"), ("/printers/" + s["brand"] + "/", BRANDS[s["brand"]]), (path, s["name"])], lastmod=pub))
 
+def _with_yield(rows, yields):
+    out = []
+    for r in rows:
+        if r["sku"] in yields:
+            r = dict(r)
+            r["yield_text"] = yields[r["sku"]]
+        out.append(r)
+    return out
+
+def lookup_refresh(slug, printer_count):
+    """Page-specific facts rechecked 20 Nov 2026. None for every other cartridge."""
+    if slug == "brother-lc406":
+        yields = {
+            "LC406BK": "3,000 pages, approximate (ISO/IEC 24711)",
+            "LC406XLBK": "6,000 pages, approximate (ISO/IEC 24711)",
+            "LC406C": "1,500 pages, approximate (ISO/IEC 24711)",
+            "LC406XLC": "5,000 pages, approximate (ISO/IEC 24711)",
+            "LC406M": "1,500 pages, approximate (ISO/IEC 24711)",
+            "LC406XLM": "5,000 pages, approximate (ISO/IEC 24711)",
+            "LC406Y": "1,500 pages, approximate (ISO/IEC 24711)",
+            "LC406XLY": "5,000 pages, approximate (ISO/IEC 24711)",
+        }
+        reads = [
+            ("/printers/brother/mfc-j4335dw/", "Brother MFC-J4335DW", "The page whose replacement footnote prints the LC406 yields, and whose in-box claim is 150 pages a month."),
+            ("/printers/brother/mfc-j4345dw-xl/", "Brother MFC-J4345DW XL", "Same replacement yields. Brother's in-box claim on this model is 300 pages a month for two years."),
+            ("/printers/brother/mfc-j5855dw/", "Brother MFC-J5855DW", "Named on Brother's help article for a 300-page, one-year in-box calculation."),
+            ("/cartridges/brother-tn-760/", "Brother TN-760", "A toner number, not this ink. Different supply, different ISO method."),
+        ]
+        prose = f'''<h2>Replacement yields, rechecked {CHECKED_1120_H}</h2>
+<p>The numbers in the table are the replacement-cartridge yields, not a promise of a year of printing. On the <a href="/printers/brother/mfc-j4335dw/">MFC-J4335DW</a> page, Brother's feature line says choose standard yield for up to 3,000 black pages and 1,500 color pages, or high yield for up to 6,000 black and 5,000 color. The disclaimer under that page is stricter about the wording: all of those yields are approximate and are calculated to ISO/IEC 24711, and it states LC406BK at 3,000 pages, each LC406 cyan, magenta, and yellow cartridge at 1,500, LC406XLBK at 6,000, and each LC406XL color cartridge at 5,000.</p>
+<p>The <a href="/printers/brother/mfc-j4345dw-xl/">MFC-J4345DW XL</a> disclaimer prints the same yields and puts "approx." in front of each count. Brother's help answer on the one-year in-box calculation lists each SKU on its own line and says "up to" those same page counts, still approximate, still ISO/IEC 24711. Checked {CHECKED_1120_H}, those three pages still agree on the replacement numbers. They do not agree on what "a year of ink" means.</p>
+<h2>A year of ink is a different sum</h2>
+<p>The MFC-J4335DW disclaimer for "Up to 1-year of ink in-box" uses about 150 pages a month, at 60 percent black and 40 percent color, ISO/IEC 24711, from the four cartridges in the box. The same product page was marked Discontinued when we opened it on {CHECKED_1120_H}. The replacement footnote was still there.</p>
+<p>The MFC-J4345DW XL page says the box holds up to 2 years of ink, based on about 300 pages a month at the same 60/40 split. A second footnote on that page says the in-box total is about 7,200 pages, against about 1,800 pages for the MFC-J4335DW, which is the "5,400 more pages" line. That comparison is about cartridges shipped in the box. It is not a second set of LC406 replacement yields.</p>
+<p>Brother's help article opens with a one-year claim based on about 300 pages a month, not 150. Further down it names the <a href="/printers/brother/mfc-j5855dw/">MFC-J5855DW</a>, <a href="/printers/brother/mfc-j6555dw/">MFC-J6555DW</a>, and <a href="/printers/brother/mfc-j6955dw/">MFC-J6955DW</a> for that 300-page version, and it says the first install uses extra ink to fill the delivery tubes, once. Those three models are on the printer list below. The J4335DW page still prints 150 pages a month for its own one-year line. Read the footnote on the model you own before you treat "one year" as 3,000 pages.</p>
+<p>The printer list itself is the one from Brother's MFC-J4335DW page, the LC406 4-pack page, and the LC406 cyan page, checked {TODAY_H}. This recheck did not add or drop a model. <a href="/guides/ink-toner-or-bottle/">Ink, toner, or bottle</a> if you are not sure this is the supply in the printer.</p>
+{compare_box_html("Check another Brother number", [
+    '<a href="/printers/brother/mfc-j4335dw/">MFC-J4335DW</a>: about 150 pages a month in the one-year in-box footnote.',
+    '<a href="/printers/brother/mfc-j4345dw-xl/">MFC-J4345DW XL</a>: about 300 pages a month, and about 7,200 in-box pages against about 1,800.',
+    '<a href="/printers/brother/mfc-j5855dw/">MFC-J5855DW</a>: named on the help article\'s 300-page one-year line.',
+    'Different supply: <a href="/cartridges/brother-tn-760/">TN-760 toner</a>, not LC406 ink.',
+])}
+{next_reads_html(reads, "Keep reading")}'''
+        faqs = [
+            ("Which printers use Brother LC406?", str(printer_count) + " printers are linked on this page, from Brother's MFC-J4335DW, LC406 4-pack, and LC406 cyan pages checked " + TODAY_H + ". The yield recheck on " + CHECKED_1120_H + " did not change that list."),
+            ("What page yield does Brother print for a replacement LC406?", "On the MFC-J4335DW disclaimer checked " + CHECKED_1120_H + ", the yields are approximate and calculated to ISO/IEC 24711: LC406BK 3,000 pages, LC406 cyan, magenta, and yellow 1,500 each, LC406XLBK 6,000, and LC406XL cyan, magenta, and yellow 5,000 each. The feature line on that page says \"up to\" those counts. The help article says \"up to\" as well."),
+            ("Is one year of ink the same as 3,000 pages?", "No. The 3,000 figure is the approximate ISO yield Brother prints for a replacement LC406BK cartridge. The one-year in-box line is a separate calculation. The J4335DW page uses about 150 pages a month for that line. The J4345DW XL page uses about 300 pages a month for a two-year in-box line. The help article's 300-page one-year line names the J5855DW, J6555DW, and J6955DW."),
+            ("How do I find the model number?", "Read the model name on the front of the printer. The cartridge number is printed on the supply and on the box. This page repeats the numbers Brother publishes. It does not replace the label on your printer."),
+        ]
+        return {
+            "desc": "Brother LC406 black is about 3,000 pages, and the XL black is about 6,000. Yields rechecked 20 Nov 2026.",
+            "sub": "By " + BRAND + " · Yields rechecked " + CHECKED_1120_H,
+            "answer": "<strong>" + str(printer_count) + " printers</strong> on Brother's lists use LC406. Replacement yields rechecked " + CHECKED_1120_H + ": about 3,000 black pages for LC406BK, about 6,000 for LC406XLBK, 1,500 for each standard color, and 5,000 for each XL color. Those are approximate ISO/IEC 24711 figures, not the \"year of ink\" line.",
+            "yields": yields,
+            "table_url": "https://www.brother-usa.com/p/inkjet-printers/MFCJ4335DW",
+            "prose": prose,
+            "faqs": faqs,
+            "extra_sources": [
+                ("Brother MFC-J4345DW XL", "https://www.brother-usa.com/p/inkjet-printers/MFCJ4345DWXL"),
+                ("Brother: Up to 1 Year of Ink in-box calculation", "https://help.brother-usa.com/app/answers/detail/a_id/182755/~/up-to-1-year-of-ink-in-box-calculation"),
+            ],
+            "reads": reads,
+        }
+    if slug == "hp-932":
+        reads = [
+            ("/cartridges/hp-933/", "HP 933: which printers use it", "The color number from the same OfficeJet section. HP's list does print a 933XL row."),
+            ("/printers/hp/officejet-6700-premium/", "HP OfficeJet 6700 Premium", "The printer HP names as the test unit for the 932 and 932XL yield footnotes."),
+            ("/printers/hp/officejet-7510/", "HP OfficeJet 7510", "On the compatibility list for 932, and also named on HP's 932XL shop page."),
+            ("/guides/find-the-model-number/", "Find the model number", "Where to read the name on the printer and the number on the cartridge."),
+        ]
+        prose = f'''<h2>What HP prints for a page yield</h2>
+<p>HP's compatibility document, the source for the printer list, does not print a page yield for 932. The yield comes from HP's own cartridge specification. HP's South Africa product page for the HP 932 Black Original Ink Cartridge, part CN057AE, lists a black and white yield of about 400 pages. The footnote says the test printer was the HP Officejet 6700 Premium e-All-in-One, and that the figure is an approximate average based on ISO/IEC 24711 or HP testing methodology and continuous printing. Actual yield, HP says, varies considerably with the content of the pages. The same specification lists an 8.5 ml fill, pigment-based ink, a 12 picoliter drop, and 1,088 nozzles. Checked {CHECKED_1120_H}.</p>
+<h2>932XL is on a different HP page</h2>
+<p>HP's US shop page for the 932XL High Yield Black cartridge, product CN053AN, lists about 1,000 pages. Its footnote names the same Officejet 6700 Premium test printer and the same ISO/IEC 24711 wording, and it points to <a href="https://www.hp.com/go/learnaboutsupplies" rel="nofollow noopener" target="_blank">hp.com/go/learnaboutsupplies</a> for the method. The compatible printers named on that shop page, when we read it on {CHECKED_1120_H}, include the Officejet 6600 e-All-in-One, the OfficeJet 7110 Wide Format, the <a href="/printers/hp/officejet-7510/">OfficeJet 7510</a>, and the <a href="/printers/hp/officejet-7612/">OfficeJet 7612</a>.</p>
+<p>That shop list is not the six-model list in the table above. The compatibility document we extracted on {TODAY_H} has no 932XL row in any section. The OfficeJet 6700 section of that same document does list both <a href="/cartridges/hp-933/">933 and 933XL</a> for cyan, magenta, and yellow, and only 932 (not 932XL) for black. So HP published an XL color number in the compatibility section, and published the 932XL black yield on the cartridge's own shop page instead. This page does not add 932XL to the fit list. Match the number on the cartridge you have, then confirm it on HP's page for your model.</p>
+{compare_box_html("Check another HP number", [
+    'Color from the same section, with an XL row on the compatibility list: <a href="/cartridges/hp-933/">HP 933</a>.',
+    'The yield test printer: <a href="/printers/hp/officejet-6700-premium/">OfficeJet 6700 Premium</a>.',
+    'Named on both the compatibility list and the 932XL shop page: <a href="/printers/hp/officejet-7510/">OfficeJet 7510</a>.',
+    'Read the name on the printer first: <a href="/guides/find-the-model-number/">model and cartridge numbers</a>.',
+])}
+{next_reads_html(reads, "Keep reading")}'''
+        faqs = [
+            ("Which printers use HP 932?", str(printer_count) + " printers are linked on this page, from HP's compatibility document checked " + TODAY_H + ". That document lists 932 Black. It does not list 932XL."),
+            ("What page yield does HP print for 932?", "HP's specification for the 932 Black cartridge CN057AE, checked " + CHECKED_1120_H + ", says about 400 pages. The footnote says the test printer was the Officejet 6700 Premium e-All-in-One, and that the average is based on ISO/IEC 24711 or HP testing methodology and continuous printing. HP says actual yield varies with page content."),
+            ("Does 932XL fit the same printers?", "Not according to the compatibility document this site uses. That extract has no 932XL row. HP's US shop page for CN053AN rates 932XL at about 1,000 pages and names its own compatible-printer list, which overlaps some of these OfficeJets and is not identical. Confirm the number on your cartridge against HP's page for your model."),
+            ("How do I find the model number?", "Read the model name on the front of the printer. The cartridge number is printed on the supply and on the box. This page repeats the numbers HP publishes. It does not replace the label on your printer."),
+        ]
+        return {
+            "desc": "HP 932 black is about 400 pages on HP's spec. The compatibility list names six printers and does not name 932XL.",
+            "sub": "By " + BRAND + " · Compatibility list " + TODAY_H + " · Yield pages " + CHECKED_1120_H,
+            "answer": "<strong>" + str(printer_count) + " printers</strong> on HP's compatibility list use 932 Black. HP's specification for CN057AE rates that cartridge at about 400 pages. The compatibility list does not name 932XL.",
+            "yields": {"932": "~400 pages (ISO/IEC 24711, tested in Officejet 6700 Premium)"},
+            "table_url": "https://www.hp.com/za-en/products/ink-toner/product-details/product-specifications/5094899",
+            "prose": prose,
+            "faqs": faqs,
+            "extra_sources": [
+                ("HP 932 Black Original Ink Cartridge CN057AE (HP South Africa specification)", "https://www.hp.com/za-en/products/ink-toner/product-details/product-specifications/5094899"),
+                ("HP 932XL High Yield Black Original Ink Cartridge CN053AN (HP US shop)", "https://www.hp.com/us-en/shop/pdp/-p-cn053an-140--1"),
+                ("HP: learn about supplies", "https://www.hp.com/go/learnaboutsupplies"),
+            ],
+            "reads": reads,
+        }
+    return None
+
 def cartridge_page(f):
     path = "/cartridges/" + f["slug"] + "/"
     rows = list(f["rows"].values())
@@ -795,21 +907,45 @@ def cartridge_page(f):
         extra_links.append('<a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a>')
     extra_nav = "".join(" · " + l for l in extra_links)
     pub = PUBLISHED if extra_links else None
+    modified = None
+    sub = "By " + BRAND + " · Last verified " + TODAY_H
+    answer = "<strong>" + str(len(printers)) + " printers</strong> on the manufacturer lists below use this number. If your model is not in the list, it is not on the pages we checked."
+    table_rows, table_url, table_when = rows, sources[0][1], None
+    prose, end_reads, sources_when = "", "", None
+    refresh = lookup_refresh(f["slug"], len(printers))
+    if refresh:
+        desc = refresh["desc"]
+        sub = refresh["sub"]
+        answer = refresh["answer"]
+        table_rows = _with_yield(rows, refresh["yields"])
+        table_url = refresh["table_url"]
+        table_when = CHECKED_1120_H
+        prose = "\n" + refresh["prose"]
+        faqs = refresh["faqs"]
+        seen_u = {u for _t, u in sources}
+        for t, u in refresh["extra_sources"]:
+            if u not in seen_u:
+                sources.append((t, u))
+                seen_u.add(u)
+        sources_when = CHECKED_1120_H
+        end_reads = "\n" + next_reads_html(refresh["reads"], "Related reading", "nr-h-end")
+        pub = TODAY
+        modified = CHECKED_1120
     body = f'''<article class="prose wide"><h1>{E(title.split(":")[0])}: which printers use them</h1>
-<p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
-<div class="answer"><p><strong>{len(printers)} printers</strong> on the manufacturer lists below use this number. If your model is not in the list, it is not on the pages we checked.</p></div>
-{supply_table(rows, sources[0][1])}
+<p class="sub">{sub}</p>
+<div class="answer"><p>{answer}</p></div>
+{supply_table(table_rows, table_url, table_when)}
 <h2>Printers</h2><ul class="cols">{links}</ul>
-{related_cartridge_html(f)}
+{related_cartridge_html(f)}{prose}
 {faq_html(faqs)}
-{sources_html(sources)}
+{sources_html(sources, sources_when)}{end_reads}
 <p><a href="/cartridges/">All cartridges</a> · <a href="/printers/{f["brand"]}/">{E(BRANDS[f["brand"]])} printers</a> · <a href="/guides/find-the-model-number/">How to find the model number</a>{extra_nav}</p>
 </article>'''
     # h1 may say "them" for a drum. Acceptable.
     title = fit_title([title, "Which printers use " + nice, nice + ": which printers"])
     write(path, page(path, title, desc, body,
-                    [article_ld(nice, path, pub), faq_ld(faqs)],
-                    [("/", "Home"), ("/cartridges/", "Cartridges"), (path, nice)], lastmod=pub))
+                    [article_ld(nice, path, pub, modified=modified), faq_ld(faqs)],
+                    [("/", "Home"), ("/cartridges/", "Cartridges"), (path, nice)], lastmod=modified or pub))
 
 def related_cartridge_html(f):
     mine = {(sl, b) for sl, _n, b in f["printers"]}
