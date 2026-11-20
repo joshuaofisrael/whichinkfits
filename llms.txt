@@ -8,6 +8,7 @@ Independent. Not affiliated with any printer maker. Confirm the number on the ma
 - [Find the model number](https://whichinkfits.com/guides/find-the-model-number/)
 - [Ink cartridge, toner, or bottle?](https://whichinkfits.com/guides/ink-toner-or-bottle/)
 - [Why HP cartridge numbers differ outside the US](https://whichinkfits.com/guides/hp-cartridge-numbers-by-region/)
+- [How HP Instant Ink counts a page](https://whichinkfits.com/guides/hp-instant-ink/)
 - [Sources and methods](https://whichinkfits.com/methodology/)
 
 ## Printers
