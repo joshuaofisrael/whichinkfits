@@ -196,7 +196,24 @@ def norm_supply(brand, row):
         "note": clean(row.get("note", "")), "label": " ".join(bits),
     }
 
+# AdSense low-value-content fix (20 Nov 2026): paths listed in _build/thin-noindex.txt
+# get noindex,follow and stay out of the sitemap until they have real unique substance.
+_THIN_NOINDEX = set()
+try:
+    import os as _os
+    with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "thin-noindex.txt"), encoding="utf-8") as _fh:
+        _THIN_NOINDEX = {l.strip().strip("/") for l in _fh if l.strip() and not l.startswith("#")}
+except FileNotFoundError:
+    pass
+
+
+def _is_thin(path):
+    return str(path).strip("/") in _THIN_NOINDEX
+
+
 def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal=False, lastmod=None):
+    if _is_thin(path):
+        noindex = True
     title = re.sub(r"\s+", " ", title).strip()
     if len(title) > 59:
         raise SystemExit("title over 59 chars (" + str(len(title)) + "): " + title)
@@ -1089,6 +1106,7 @@ def legal_pages():
 <h2>Analytics</h2><p>The launch build uses Cloudflare Web Analytics and Google Analytics 4.</p><p>Cloudflare Web Analytics is on every launch page and counts page views. That product does not use cookies and does not track you across other sites.</p><p>Google Analytics 4 loads only after you accept the banner. Before that choice, Consent Mode v2 leaves analytics storage and ad storage denied, and the GA4 script is not requested. Accepting turns on analytics storage only. Ad storage stays denied. The launch build puts Cookie settings in the footer so you can accept or reject later. Rejecting keeps Google Analytics 4 unloaded.</p>
 <h2>Email</h2><p>If you email joshuaofisrael@gmail.com, we use your address and message to reply, and we keep them only as long as we need to.</p>
 <h2>Advertising</h2><p>Which Ink Fits includes Google AdSense account tags (publisher {ADSENSE_CLIENT}) so the site can show ads. There are no affiliate links. Consent Mode keeps ad storage denied unless you later accept advertising cookies. When ads appear, they will be labeled. You can opt out of personalized ads at Google's ad settings and at aboutads.info. See the <a href="/ad-disclosure/">advertising disclosure</a> and our <a href="/ads.txt">ads.txt</a> file.</p>
+<h2>Google advertising cookies and your choices</h2><p>Third-party vendors, including Google, use cookies to serve ads based on a user's prior visits to this website or other websites. Google's use of advertising cookies enables it and its partners to serve ads based on your visit to this site and/or other sites on the Internet. You may opt out of personalized advertising by visiting <a href="https://adssettings.google.com/" rel="nofollow noopener">Google Ads Settings</a>. Alternatively, you can opt out of a third-party vendor's use of cookies for personalized advertising at <a href="https://www.aboutads.info/choices/" rel="nofollow noopener">aboutads.info/choices</a>. For more information, see <a href="https://policies.google.com/technologies/partner-sites" rel="nofollow noopener">how Google uses information from sites or apps that use its services</a>.</p>
 <h2>Hosting</h2><p>The site is hosted on GitHub Pages, which may log IP addresses for security.</p>
 <h2>Children</h2><p>The site is a general audience site. We do not knowingly collect information from children under 13.</p>'''),
         "/disclaimer/": ("Disclaimer", f'''<p>Last updated {D}.</p>
