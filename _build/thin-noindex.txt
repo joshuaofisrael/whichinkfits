@@ -97,7 +97,6 @@ printers/hp/deskjet-2547
 printers/hp/deskjet-2548
 printers/hp/deskjet-2549
 printers/hp/deskjet-2600
-printers/hp/deskjet-2700
 printers/hp/deskjet-2710
 printers/hp/deskjet-2720
 printers/hp/deskjet-2721
