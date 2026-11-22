@@ -35,9 +35,11 @@ PUBLISHED_TODAY_H = "19 Nov 2026"
 # datePublished is this date.
 CHECKED_1120 = "2026-11-20"
 CHECKED_1120_H = "20 Nov 2026"
-# Assigned bank photo. The file is not in the repo until the image bank copy exists.
-# Do not merge the Instant Ink page while this path 404s.
+# Rechecks and the new yield guide from the 21 Nov 2026 SEO batch.
+CHECKED_1121 = "2026-11-21"
+CHECKED_1121_H = "21 Nov 2026"
 INSTANT_INK_PHOTO = "/assets/photos/ink-cartridges-printer.png"
+BANK_PHOTO = "/assets/photos/ink-cartridges-printer.png"
 INDEXNOW_KEY = "4f77a5e3aae98a8a1031b02723738f83"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 # Measurement id from the GA4 property. Empty until the owner sets G-XXXXXXXXXX.
@@ -323,6 +325,23 @@ def compare_box_html(title, lines):
         '<aside class="compare" aria-label="' + E(title) + '">'
         "<h2>" + E(title) + "</h2><ul>" + items + "</ul></aside>"
     )
+
+def photo_figure():
+    """One news-style thumbnail. The file is the assigned bank photo. The link is the image policy."""
+    return (
+        '<figure class="figure"><a href="/image-policy/">'
+        '<img src="' + BANK_PHOTO + '" width="1200" height="675" alt="AI-generated image"></a>'
+        '<figcaption>AI-generated image. <a href="/image-policy/">Image policy</a>.</figcaption></figure>'
+    )
+
+def with_thumbs(items):
+    out = []
+    for it in items:
+        if len(it) > 3:
+            out.append(it)
+        else:
+            out.append((it[0], it[1], it[2], BANK_PHOTO))
+    return out
 
 def next_reads_html(items, heading="Related reading", hid="nr-h"):
     """3-4 closely related next-read links. Thumb optional until a bank photo exists."""
@@ -692,6 +711,45 @@ def series_enrichment(s, members, nums):
             ("/guides/ink-toner-or-bottle/", "Ink cartridge, toner, or bottle?", "How to tell which supply type you have."),
         ]
         return extra, faqs_extra, compare, reads, PUBLISHED_TODAY
+    if brand == "hp" and slug == "deskjet-2700":
+        extra = (
+            photo_figure()
+            + "<h2>Standard and high yield on this series</h2>"
+            "<p>HP's compatibility document puts twelve DeskJet models in this one section, from the "
+            '<a href="/printers/hp/deskjet-2710/">2710</a> through the '
+            '<a href="/printers/hp/deskjet-2755e/">2755e</a>. On the North America column, every model lists the same four rows: '
+            '<a href="/cartridges/hp-67/">67 and 67XL</a> black, and 67 and 67XL tri-color. '
+            "The model pages repeat that table. They do not each have a different yield, so the page counts live here and in the "
+            '<a href="/guides/xl-vs-standard-cartridges/">XL and standard yield guide</a>, not copied onto every model.</p>'
+            "<p>HP's own cartridge specifications, opened " + CHECKED_1121_H + ", print the approximate yields. "
+            "67 black (3YM56AN) is about 120 pages and 67XL black (3YM57AN) is about 240. "
+            "67 tri-color (3YM55AN) is about 100 pages and 67XL tri-color (3YM58AN) is about 200. "
+            "Each footnote says the test printer was the HP ENVY 6000 All-in-One series, not a DeskJet 2700, and that the average uses ISO/IEC 24711 or HP's own method, printing continuously. "
+            "Actual yield varies with what is on the page. The compatibility document still does not print these counts.</p>"
+            "<h2>The other columns are different numbers</h2>"
+            "<p>The same HP row prints 305 and 305XL for Europe, the Middle East, and Africa, and 805 and 805XL for China, India, and Indonesia. "
+            "Those are not nicknames for 67. A cartridge bought for a US DeskJet 2755e is the 67 family. "
+            '<a href="/guides/hp-cartridge-numbers-by-region/">Why HP numbers differ by country</a>.</p>'
+        )
+        faqs_extra = [
+            ("What page yield does HP print for the ink on the DeskJet 2700 series?",
+             "HP's cartridge specifications, checked 21 Nov 2026, say about 120 pages for 67 black, about 240 for 67XL black, about 100 for 67 tri-color, and about 200 for 67XL tri-color. The footnotes say the test printer was the ENVY 6000 series, not this DeskJet, and that the figure is an approximate average."),
+            ("Do the twelve models use different cartridges?",
+             "Not on HP's North America column for this section. 2710, 2720, 2721, 2722, 2723, 2724, 2732, 2742e, 2752, 2752e, 2755, and 2755e all list 67 and 67XL black and tri-color. Open the model only to match the name on the printer."),
+        ]
+        compare = [
+            'Open the number: <a href="/cartridges/hp-67/">HP 67 and 67XL</a>.',
+            'Read the four-brand comparison: <a href="/guides/xl-vs-standard-cartridges/">XL vs standard page yields</a>.',
+            'Match the name on the front, for example <a href="/printers/hp/deskjet-2755e/">DeskJet 2755e</a>.',
+            'A different DeskJet family: <a href="/printers/hp/deskjet-1200/">DeskJet 1200 Series</a>, which lists 67 and not 67XL on the US column we extracted.',
+        ]
+        reads = with_thumbs([
+            ("/guides/xl-vs-standard-cartridges/", "XL vs standard page yields", "HP 67, Epson 212, Brother LC406, and Canon PG-243, from the maker pages."),
+            ("/cartridges/hp-67/", "HP 67: which printers it fits", "Every printer on the US column for family 67."),
+            ("/guides/hp-cartridge-numbers-by-region/", "Why HP numbers differ by country", "305 and 805 are other columns, not other names for 67."),
+            ("/printers/hp/deskjet-1200/", "DeskJet 1200 Series", "A later DeskJet hub whose US column lists 67 without a 67XL row in our extract."),
+        ])
+        return extra, faqs_extra, compare, reads, CHECKED_1121
     return "", [], [], [], None
 
 def series_page(s):
@@ -739,8 +797,8 @@ def series_page(s):
     extra_html, faqs_extra, compare_lines, reads, enrich_pub = series_enrichment(s, members, nums)
     faqs.extend(faqs_extra)
     compare = compare_box_html("Check another model or number", compare_lines) if compare_lines else ""
-    mid_reads = next_reads_html(reads[:2], "Keep reading") if reads else ""
-    end_reads = next_reads_html(reads, "Related reading") if reads else ""
+    mid_reads = next_reads_html(reads[:2], "Keep reading", "nr-mid") if reads else ""
+    end_reads = next_reads_html(reads, "Related reading", "nr-end") if reads else ""
     extra_links = []
     if s["brand"] == "hp" and s["slug"] in ("deskjet-1110-series", "deskjet-1200"):
         extra_links.append('<a href="/guides/hp-cartridge-numbers-by-region/">Why the number changes by country</a>')
@@ -748,7 +806,13 @@ def series_page(s):
         extra_links.append('<a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a>')
     extra_nav = "".join(" · " + l for l in extra_links)
     pub = enrich_pub or (PUBLISHED if extra_links else None)
-    verified = PUBLISHED_TODAY_H if enrich_pub else TODAY_H
+    # The 2700 hub has been on the site since launch. The 21 Nov text is a revision, not a new page.
+    published_ld = TODAY if (s["brand"] == "hp" and s["slug"] == "deskjet-2700" and enrich_pub) else pub
+    modified_ld = CHECKED_1121 if (s["brand"] == "hp" and s["slug"] == "deskjet-2700" and enrich_pub) else None
+    if s["brand"] == "hp" and s["slug"] == "deskjet-2700" and enrich_pub:
+        verified = CHECKED_1121_H
+    else:
+        verified = PUBLISHED_TODAY_H if enrich_pub else TODAY_H
     body = f'''<article class="prose wide"><h1>{E(s["name"])}</h1>
 <p class="sub">By {BRAND} · Last verified {verified}</p>
 <div class="answer"><p>This series hub links every model we list from the manufacturer's compatibility pages. Open a model for the full table.</p></div>
@@ -761,8 +825,8 @@ def series_page(s):
 {sources_html(srcs)}
 {end_reads}
 <p><a href="/printers/{s["brand"]}/">All {E(BRANDS[s["brand"]])} models</a> · <a href="/guides/find-the-model-number/">How to find the model number</a>{extra_nav}</p></article>'''
-    write(path, page(path, series_title(s["name"]), desc, body, [article_ld(s["name"], path, pub), faq_ld(faqs)],
-                     [("/", "Home"), ("/printers/", "Printers"), ("/printers/" + s["brand"] + "/", BRANDS[s["brand"]]), (path, s["name"])], lastmod=pub))
+    write(path, page(path, series_title(s["name"]), desc, body, [article_ld(s["name"], path, published_ld, modified=modified_ld), faq_ld(faqs)],
+                     [("/", "Home"), ("/printers/", "Printers"), ("/printers/" + s["brand"] + "/", BRANDS[s["brand"]]), (path, s["name"])], lastmod=modified_ld or pub))
 
 def _with_yield(rows, yields):
     out = []
@@ -853,6 +917,8 @@ def lookup_refresh(slug, printer_count):
             ("How do I find the model number?", "Read the model name on the front of the printer. The cartridge number is printed on the supply and on the box. This page repeats the numbers HP publishes. It does not replace the label on your printer."),
         ]
         return {
+            "checked": CHECKED_1120,
+            "checked_h": CHECKED_1120_H,
             "desc": "HP 932 black is about 400 pages on HP's spec. The compatibility list names six printers and does not name 932XL.",
             "sub": "By " + BRAND + " · Compatibility list " + TODAY_H + " · Yield pages " + CHECKED_1120_H,
             "answer": "<strong>" + str(printer_count) + " printers</strong> on HP's compatibility list use 932 Black. HP's specification for CN057AE rates that cartridge at about 400 pages. The compatibility list does not name 932XL.",
@@ -864,6 +930,57 @@ def lookup_refresh(slug, printer_count):
                 ("HP 932 Black Original Ink Cartridge CN057AE (HP South Africa specification)", "https://www.hp.com/za-en/products/ink-toner/product-details/product-specifications/5094899"),
                 ("HP 932XL High Yield Black Original Ink Cartridge CN053AN (HP US shop)", "https://www.hp.com/us-en/shop/pdp/-p-cn053an-140--1"),
                 ("HP: learn about supplies", "https://www.hp.com/go/learnaboutsupplies"),
+            ],
+            "reads": reads,
+        }
+    if slug == "canon-pg-243-cl-244":
+        ts302 = "https://www.usa.canon.com/support/p/pixma-ts302a-wireless-inkjet-home-printer"
+        measure = "https://www.usa.canon.com/printers/inkjet-page-yields/page-measure"
+        reads = with_thumbs([
+            ("/guides/xl-vs-standard-cartridges/", "XL vs standard page yields", "How HP, Epson, Brother, and Canon print a standard yield next to a larger one."),
+            ("/cartridges/canon-pg-245-cl-246/", "Canon PG-245 and CL-246", "The larger numbers on the same Canon spec, including an XL."),
+            ("/printers/canon/pixma-mg2420/", "Canon PIXMA MG2420", "One of the five MG models on the 16 Nov list."),
+            ("/printers/canon/pixma-mg2520/", "Canon PIXMA MG2520", "Named on the MG article. The value pack we checked does not list it."),
+        ])
+        prose = f'''<h2>What Canon printed for a page count</h2>
+<p>On {CHECKED_1121_H} the PIXMA TS302a support page printed a page yield row for these cartridges: PG-243 black 100 pages and CL-244 color 100 pages. The same row prints the fill: PG-243 black 5.6 ml and CL-244 color 6.2 ml. It does not print an XL of either number. It does print a larger pair on the next line, <a href="/cartridges/canon-pg-245-cl-246/">PG-245 and CL-246</a>, at 180 black and 180 color pages for the standard size and 300 and 300 for the XL.</p>
+<p>That 100 is a page count for the cartridge number. The TS302a cell does not say ISO. Canon's separate page, <a href="{E(measure)}" rel="nofollow noopener" target="_blank">How Page Yields Are Measured</a>, says the mixed text and graphics document is declared to ISO/IEC 24711, from continuous printing on plain paper. This page does not paste the word ISO onto the 100, because the TS302a cell itself does not.</p>
+<h2>There is no PG-243XL on that spec</h2>
+<p>A reader looking for an XL of PG-243 will not find one in this row. The step up Canon prints is a different number. PG-245 standard is 180 pages against PG-243's 100, and PG-245XL is 300. Those are not a high yield fill of PG-243. The five MG printers below are the models whose older Canon article listed PG-243 beside PG-245. Other PIXMA models on our <a href="/cartridges/canon-pg-245-cl-246/">PG-245 page</a> are listed for PG-245 only.</p>
+<p>The same TS302a row prints PG-245 standard at 8.9 ml. The MG series article we saved on {TODAY_H} printed 8.0 ml for PG-245, and 5.6 ml and 6.2 ml for PG-243 and CL-244. The 5.6 and 6.2 still match. The 8.0 and the 8.9 do not. That Knowledge Base article did not load on {CHECKED_1121_H} (the page returned an error), so this recheck does not overwrite the PG-245 volume on the other page. It only records the disagreement.</p>
+<h2>The printer list is still the 16 Nov list</h2>
+<p>Five printers are linked below, from the PG-245 value pack and the MG series article, both checked {TODAY_H}: MG2420, MG2920, MG2924, MG2520, and MG2922. The value pack names the first three. The article names all five. This recheck did not add or drop one of those five, because the article would not open.</p>
+<p>The TS302a support page is a different fact. It is the page that prints the 100 page yield, and it names PG-243 and CL-244 as inks for the TS302a. There is no TS302a model page here yet. Do not read the five links as a complete list of every Canon printer that can hold this cartridge.</p>
+<p>Cost per page is the price you pay divided by that 100. Canon's TS302a spec does not print a shelf price, so this page does not invent one. The same arithmetic, for HP, Epson, and Brother as well as this Canon pair, is in the <a href="/guides/xl-vs-standard-cartridges/">yield guide</a>.</p>
+{compare_box_html("Check another Canon number", [
+    'The larger number on the same spec: <a href="/cartridges/canon-pg-245-cl-246/">PG-245 and CL-246</a>, including XL.',
+    'A model the value pack and the article both name: <a href="/printers/canon/pixma-mg2420/">PIXMA MG2420</a>.',
+    'A model the article names and the value pack does not: <a href="/printers/canon/pixma-mg2520/">PIXMA MG2520</a>.',
+    'All four makers, standard against XL: <a href="/guides/xl-vs-standard-cartridges/">page yields compared</a>.',
+])}
+{next_reads_html(reads, "Keep reading", "nr-mid")}'''
+        faqs = [
+            ("Which printers use Canon PG-243 and CL-244?", str(printer_count) + " PIXMA MG models are linked on this page, from Canon's value pack and MG series article checked " + TODAY_H + ". The TS302a support page also names these cartridges. TS302a is not one of the five. The Knowledge Base article did not load on " + CHECKED_1121_H + ", so those five names were not re-confirmed that day."),
+            ("What page yield does Canon print?", "The PIXMA TS302a support page, opened " + CHECKED_1121_H + ", prints 100 black pages for PG-243 and 100 color pages for CL-244, and fill volumes of 5.6 ml and 6.2 ml. The cell does not say ISO. Canon's measurement page says the mixed-document method follows ISO/IEC 24711."),
+            ("Is there an XL of PG-243?", "Not on the TS302a spec. That page prints PG-245 and CL-246 as separate numbers, at 180 pages standard and 300 pages XL for black and for color. It does not print a PG-243XL or a CL-244XL."),
+            ("How do I find the model number?", "Read the model name on the front of the printer. The cartridge number is printed on the supply and on the box. This page repeats the numbers Canon publishes. It does not replace the label on your printer."),
+        ]
+        return {
+            "checked": CHECKED_1121,
+            "checked_h": CHECKED_1121_H,
+            "desc": "PG-243 black and CL-244 color are 100 pages each on Canon's TS302a spec. No XL of this number.",
+            "sub": "By " + BRAND + " · Printer list " + TODAY_H + " · Yield page " + CHECKED_1121_H,
+            "answer": "<strong>" + str(printer_count) + " PIXMA MG printers</strong> are on the list below. Canon's TS302a spec, opened " + CHECKED_1121_H + ", prints 100 black pages for PG-243 and 100 color pages for CL-244. It does not print an XL of either number.",
+            "yields": {
+                "PG-243": "100 pages (black), PIXMA TS302a spec",
+                "CL-244": "100 pages (color), PIXMA TS302a spec",
+            },
+            "table_url": ts302,
+            "prose": prose,
+            "faqs": faqs,
+            "extra_sources": [
+                ("Canon Support for PIXMA TS302a", ts302),
+                ("How Page Yields Are Measured, Canon U.S.A.", measure),
             ],
             "reads": reads,
         }
@@ -918,12 +1035,14 @@ def cartridge_page(f):
     prose, end_reads, sources_when = "", "", None
     refresh = lookup_refresh(f["slug"], len(printers))
     if refresh:
+        checked = refresh.get("checked", CHECKED_1120)
+        checked_h = refresh.get("checked_h", CHECKED_1120_H)
         desc = refresh["desc"]
         sub = refresh["sub"]
         answer = refresh["answer"]
         table_rows = _with_yield(rows, refresh["yields"])
         table_url = refresh["table_url"]
-        table_when = CHECKED_1120_H
+        table_when = checked_h
         prose = "\n" + refresh["prose"]
         faqs = refresh["faqs"]
         seen_u = {u for _t, u in sources}
@@ -931,10 +1050,10 @@ def cartridge_page(f):
             if u not in seen_u:
                 sources.append((t, u))
                 seen_u.add(u)
-        sources_when = CHECKED_1120_H
+        sources_when = checked_h
         end_reads = "\n" + next_reads_html(refresh["reads"], "Related reading", "nr-h-end")
         pub = TODAY
-        modified = CHECKED_1120
+        modified = checked
     body = f'''<article class="prose wide"><h1>{E(title.split(":")[0])}: which printers use them</h1>
 <p class="sub">{sub}</p>
 <div class="answer"><p>{answer}</p></div>
@@ -1006,8 +1125,8 @@ def indexes(printers, series, fams):
         ("Which brand should I pick?", "Pick the brand printed on the printer. This page links HP, Canon, Epson, and Brother. The count under a brand is the number of models taken from that manufacturer's pages."),
         ("Which page should I open if I only know the cartridge number?", "Open the cartridge list and choose the number printed on the supply or the box."),
     ]
-    body = '<h1>Printers</h1><p class="answer">Pick a brand. Every model page cites the manufacturer page it was checked against on ' + TODAY_H + '.</p><ul class="cards">' + "".join(cards) + '</ul><p><a href="/cartridges/">Cartridges</a> · <a href="/guides/find-the-model-number/">How to find the model number</a> · <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a> · <a href="/guides/hp-cartridge-numbers-by-region/">Why the cartridge number changes by country</a></p>' + faq_html(printer_faqs)
-    write("/printers/", page("/printers/", "Printer ink and toner by model | " + BRAND, "Find the cartridge, toner, or bottle for an HP, Canon, Epson, or Brother printer.", body, [faq_ld(printer_faqs)], [("/", "Home"), ("/printers/", "Printers")], lastmod=PUBLISHED))
+    body = '<h1>Printers</h1><p class="answer">Pick a brand. Every model page cites the manufacturer page it was checked against on ' + TODAY_H + '.</p><ul class="cards">' + "".join(cards) + '</ul><p><a href="/cartridges/">Cartridges</a> · <a href="/guides/">Guides</a> · <a href="/guides/find-the-model-number/">How to find the model number</a> · <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a> · <a href="/guides/xl-vs-standard-cartridges/">XL and standard page yields</a> · <a href="/guides/hp-cartridge-numbers-by-region/">Why the cartridge number changes by country</a></p>' + faq_html(printer_faqs)
+    write("/printers/", page("/printers/", "Printer ink and toner by model | " + BRAND, "Find the cartridge, toner, or bottle for an HP, Canon, Epson, or Brother printer.", body, [faq_ld(printer_faqs)], [("/", "Home"), ("/printers/", "Printers")], lastmod=CHECKED_1121))
     items = []
     for slug in sorted(fams):
         f = fams[slug]
@@ -1017,8 +1136,8 @@ def indexes(printers, series, fams):
         ("Which cartridge page should I open?", "Open the number printed on the cartridge, toner, or bottle. The page lists the printers the manufacturer names for that number."),
         ("What if my printer is not listed on that page?", "It was not on the manufacturer pages checked " + TODAY_H + ". Open the printer by model, then confirm the number on the manufacturer page linked there."),
     ]
-    body = '<h1>Cartridges, toner, and bottles</h1><p class="answer">Pick a number to see the printers the manufacturer lists for it.</p><ul class="cols">' + "".join(items) + '</ul><p><a href="/printers/">Printers</a> · <a href="/guides/find-the-model-number/">How to find the model number</a> · <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a></p>' + faq_html(cart_faqs)
-    write("/cartridges/", page("/cartridges/", "Ink and toner by cartridge number | " + BRAND, "Which printers use a cartridge, toner, or bottle number, from the manufacturer lists.", body, [faq_ld(cart_faqs)], [("/", "Home"), ("/cartridges/", "Cartridges")], lastmod=PUBLISHED))
+    body = '<h1>Cartridges, toner, and bottles</h1><p class="answer">Pick a number to see the printers the manufacturer lists for it.</p><ul class="cols">' + "".join(items) + '</ul><p><a href="/printers/">Printers</a> · <a href="/guides/">Guides</a> · <a href="/guides/find-the-model-number/">How to find the model number</a> · <a href="/guides/xl-vs-standard-cartridges/">XL and standard page yields</a> · <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a></p>' + faq_html(cart_faqs)
+    write("/cartridges/", page("/cartridges/", "Ink and toner by cartridge number | " + BRAND, "Which printers use a cartridge, toner, or bottle number, from the manufacturer lists.", body, [faq_ld(cart_faqs)], [("/", "Home"), ("/cartridges/", "Cartridges")], lastmod=CHECKED_1121))
 
 def guide():
     path = "/guides/find-the-model-number/"
@@ -1031,7 +1150,7 @@ def guide():
 <p class="sub">By {BRAND} · Last verified {TODAY_H}</p>
 <div class="answer"><p><strong>Read the model on the printer. Read the number on the box.</strong> Then open the matching page here and follow the link to the manufacturer.</p></div>
 <h2>On the printer</h2><p>The model is the name on the front, such as DeskJet 2755e, PIXMA TR4720, EcoTank ET-2800, or MFC-L2710DW. Series names are shorter than the full model. If you only know the series, start at the series hub and then match the rest of the name.</p>
-<h2>On the cartridge or bottle</h2><p>Ink cartridges show a number such as 67, PG-275, or 212. Toner shows a number such as TN-760 or 58A. Tank printers use a bottle such as GI-21 or 522, and the lead on those pages says so. High yield packs add XL or a similar mark. The color is printed next to the number.</p>
+<h2>On the cartridge or bottle</h2><p>Ink cartridges show a number such as 67, PG-275, or 212. Toner shows a number such as TN-760 or 58A. Tank printers use a bottle such as GI-21 or 522, and the lead on those pages says so. High yield packs add XL or a similar mark. The color is printed next to the number. Published page counts, and why a higher count is not automatically a lower cost per page, are in the <a href="/guides/xl-vs-standard-cartridges/">XL and standard yield guide</a>.</p>
 <h2>Then check the source</h2><p>Each page links the manufacturer document we used. Cartridge numbers differ by country. HP's pages quote the other columns when HP prints them. <a href="/methodology/">Sources and methods</a>.</p>
 {compare_box_html("Check another path", [
     'Have a printer name? Open it from <a href="/printers/">Printers</a>.',
@@ -1059,7 +1178,7 @@ def guide():
 ])}
 <p><a href="/printers/">Browse printers</a> · <a href="/cartridges/">Browse cartridges</a></p>
 </article>'''
-    write(path, page(path, "Find the printer model and cartridge number", "How to read the model number on the printer and the cartridge number on the box.", body, [article_ld("Find the model number", path, PUBLISHED_TODAY), faq_ld(faqs)], [("/", "Home"), (path, "Find the number")], lastmod=PUBLISHED_TODAY))
+    write(path, page(path, "Find the printer model and cartridge number", "How to read the model number on the printer and the cartridge number on the box.", body, [article_ld("Find the model number", path, PUBLISHED_TODAY, CHECKED_1121), faq_ld(faqs)], [("/", "Home"), (path, "Find the number")], lastmod=CHECKED_1121))
 
 def guide_ink_toner_bottle():
     path = "/guides/ink-toner-or-bottle/"
@@ -1228,7 +1347,142 @@ def guide_hp_instant_ink():
         path, title, desc, body,
         [article_ld(title, path, CHECKED_1120), faq_ld(faqs)],
         [("/", "Home"), (path, "HP Instant Ink")],
-        lastmod=CHECKED_1120,
+        lastmod=CHECKED_1120))
+
+def guide_xl_vs_standard():
+    path = "/guides/xl-vs-standard-cartridges/"
+    title = "XL vs standard ink: the published page yields"
+    desc = "HP 67XL is about twice HP 67. Epson 212XL black is 500 pages against 150. Canon PG-243 has no XL size."
+    hp67 = "https://www.hp.com/us-en/shop/pdp/hp-67-black-original-ink-cartridge"
+    hp67xl = "https://www.hp.com/us-en/shop/pdp/hp-67xl-high-yield-black-original-ink-cartridge"
+    hp67c = "https://www.hp.com/us-en/shop/pdp/hp-67-tri-color-original-ink-cartridge"
+    hp67xlc = "https://www.hp.com/us-en/shop/pdp/hp-67xl-high-yield-tri-color-original-ink-cartridge"
+    envy = "https://www.hp.com/us-en/shop/pdp/hp-envy-6055e-all-in-one-printer"
+    epson = "https://epson.com/For-Work/Printers/Inkjet/Epson-WorkForce-WF-2830-All-in-One-Printer/p/C11CG30201"
+    brother = "https://www.brother-usa.com/p/inkjet-printers/MFCJ4335DW"
+    canon = "https://www.usa.canon.com/support/p/pixma-ts302a-wireless-inkjet-home-printer"
+    measure = "https://www.usa.canon.com/printers/inkjet-page-yields/page-measure"
+    faqs = [
+        ("Does XL always mean twice the pages?", "No. On the HP 67 pages checked 21 Nov 2026, the XL is about twice the standard for black (about 240 against about 120) and for tri-color (about 200 against about 100). Epson's WF-2830 page prints 500 ISO pages for 212XL black against 150 for 212 black. Brother's color XL is 5,000 pages against 1,500. Canon does not print an XL of PG-243."),
+        ("Is the higher yield a lower cost per page?", "Only if the price you pay for the larger cartridge is less than its yield multiple times the smaller one. Divide the price by the approximate yield. The maker pages opened 21 Nov 2026 did not print a cartridge shelf price this page will use. HP's US shop pages showed $0.00 beside an MSRP label and a $1.99 per month line. Neither is a price for one cartridge."),
+        ("Were these yields measured in my printer?", "HP's 67 footnotes say the test printer was the ENVY 6000 All-in-One series. Epson's footnote says ISO/IEC 24711 in default mode, printing continuously. Brother says the LC406 counts are approximate and calculated to ISO/IEC 24711. Canon's TS302a cell prints 100 pages and does not name the test printer in that cell."),
+    ]
+    rows = [
+        ("HP 67 black", "3YM56AN, about 120 pages", "3YM57AN, about 240 pages", "2 times", "ENVY 6000 series"),
+        ("HP 67 tri-color", "3YM55AN, about 100 pages", "3YM58AN, about 200 pages", "2 times", "ENVY 6000 series"),
+        ("Epson 212 black", "150 ISO pages", "212XL, 500 ISO pages", "3 and 1/3 times", "ISO/IEC 24711, default mode"),
+        ("Epson 212 color", "130 ISO pages", "212XL, 350 ISO pages", "between 2 and 3 times", "ISO/IEC 24711, default mode"),
+        ("Brother LC406 black", "LC406BK, 3,000 pages", "LC406XLBK, 6,000 pages", "2 times", "ISO/IEC 24711, approximate"),
+        ("Brother LC406 color", "1,500 pages each", "5,000 pages each", "3 and 1/3 times", "ISO/IEC 24711, per cartridge"),
+        ("Canon PG-243 black", "100 pages, no XL of this number", "PG-245 is 180; PG-245XL is 300", "different part numbers", "TS302a spec cell"),
+        ("Canon CL-244 color", "100 pages, no XL of this number", "CL-246 is 180; CL-246XL is 300", "different part numbers", "TS302a spec cell"),
+    ]
+    tr = "".join(
+        "<tr><td>" + E(a) + "</td><td>" + E(b) + "</td><td>" + E(c) + "</td><td>" + E(d) + "</td><td>" + E(e) + "</td></tr>"
+        for a, b, c, d, e in rows
+    )
+    mid = with_thumbs([
+        ("/cartridges/hp-67/", "HP 67: which printers it fits", "The family whose shop pages print about 120 and about 240 black pages."),
+        ("/cartridges/epson-212/", "Epson 212 printers", "Four models grouped on Epson's part number table."),
+        ("/cartridges/brother-lc406/", "Brother LC406 printers", "Where the 3,000 and 6,000 page footnotes are already spelled out."),
+        ("/cartridges/canon-pg-243-cl-244/", "Canon PG-243 and CL-244", "100 pages each, and no XL of this number."),
+    ])
+    end = with_thumbs([
+        ("/printers/hp/deskjet-2700/", "DeskJet 2700 series hub", "Twelve models that share 67 and 67XL, with the yield notes kept on the hub."),
+        ("/cartridges/canon-pg-245-cl-246/", "Canon PG-245 and CL-246", "The larger Canon numbers, including an XL, from the same spec row."),
+        ("/guides/find-the-model-number/", "Find the model number", "Read the name on the printer before you compare yields."),
+        ("/guides/ink-toner-or-bottle/", "Ink cartridge, toner, or bottle?", "A toner XL and an ink XL are not the same kind of supply."),
+    ])
+    body = f'''<article class="prose"><h1>XL or standard: the page yields the makers actually print</h1>
+<p class="sub">By {BRAND} · Last verified {CHECKED_1121_H}</p>
+<div class="answer"><p><strong>XL is not one multiple.</strong> HP's 67XL is about twice the 67. Epson's 212XL black is 500 pages against 150. Brother's color XL is 5,000 against 1,500. Canon does not print an XL of PG-243 at all.</p></div>
+{photo_figure()}
+<p>The counts below are replacement yields, the kind of figure you use when the cartridge in the printer is empty and you buy another. They are not the "year of ink in the box" lines some printer pages also print. Each figure is tied to the page that prints it, opened {CHECKED_1121_H}. Where a page did not print a number, this guide does not fill one in.</p>
+<div class="tablewrap"><table class="list"><thead><tr><th scope="col">Cartridge</th><th scope="col">Standard, as printed</th><th scope="col">Larger size, as printed</th><th scope="col">How many times</th><th scope="col">What the footnote names</th></tr></thead><tbody>{tr}</tbody></table></div>
+<h2>HP 67: about twice, and the test printer is not a DeskJet</h2>
+<p>HP's US shop page for <a href="{E(hp67)}" rel="nofollow noopener" target="_blank">67 black, 3YM56AN</a>, prints about 120 pages. The <a href="{E(hp67xl)}" rel="nofollow noopener" target="_blank">67XL black, 3YM57AN</a>, prints about 240. Tri-color is <a href="{E(hp67c)}" rel="nofollow noopener" target="_blank">3YM55AN at about 100</a> and <a href="{E(hp67xlc)}" rel="nofollow noopener" target="_blank">3YM58AN at about 200</a>. The 67XL tri-color page also says you can print up to two times as many pages with a high yield cartridge. The black pages say the high yield prints more pages than the standard. They do not repeat the words "two times," but 240 against 120 is twice, and 200 against 100 is twice.</p>
+<p>Every one of those footnotes says the same thing about the test. It was the HP ENVY 6000 All-in-One Printer series. The average is based on ISO/IEC 24711 or HP's testing method, and on continuous printing. Actual yield varies considerably with the content of the pages. The "or" matters. HP is not saying the number is only the ISO test. Details are deferred to hp.com/go/learnaboutsupplies. That address redirected, on {CHECKED_1121_H}, to a page that did not itself print these four yields.</p>
+<p>HP's <a href="{E(envy)}" rel="nofollow noopener" target="_blank">ENVY 6055e shop page</a> prints all four yields in one paragraph, with the same part numbers, and points at the same learn-about-supplies address. It does not say the 6055e was the unit in the test lab. The footnote on the cartridge pages names the ENVY 6000 series. Our <a href="/printers/hp/deskjet-2700/">DeskJet 2700 hub</a> uses this ink on twelve models. The yield was not measured in those DeskJets. The <a href="/cartridges/hp-67/">HP 67 page</a> is the list of printers.</p>
+<h2>Epson 212: black stretches further than color</h2>
+<p>Epson's <a href="{E(epson)}" rel="nofollow noopener" target="_blank">WorkForce WF-2830 page</a> prints one pair of ISO page counts. Standard 212 is black 150 and color 130. High capacity 212XL is black 500 and color 350. Footnote 6 says replacement cartridge yields are based on ISO/IEC 24711 tests in default mode, printing continuously. It also says yields vary with the images, the settings, temperature, and humidity, and that part of the ink from the included cartridges is used for printer startup. The page prints one color number, not a separate count for cyan, magenta, and yellow.</p>
+<p>500 divided by 150 is 3 and 1/3. 350 sits between two times 130 (260) and three times 130 (390). So on Epson's own counts, the black XL is a larger jump than the color XL. The four printers we group on <a href="/cartridges/epson-212/">Epson 212</a> share these cartridge numbers. The yield line we are quoting is the WF-2830 page.</p>
+<h2>Brother LC406: color is a bigger jump than black</h2>
+<p>Brother's <a href="{E(brother)}" rel="nofollow noopener" target="_blank">MFC-J4335DW page</a> was marked Discontinued when opened {CHECKED_1121_H}. The replacement footnote was still there. It says all page yields are approximate and calculated to ISO/IEC 24711. LC406BK is 3,000 pages. Each LC406 cyan, magenta, and yellow cartridge is 1,500. LC406XLBK is 6,000. Each LC406XL color cartridge is 5,000. The feature line above that footnote says "up to" 3,000 black and 1,500 color, or "up to" 6,000 black and 5,000 color.</p>
+<p>Black XL is twice the standard black. Color XL is 3 and 1/3 times the standard color, because 5,000 divided by 1,500 is 3 and 1/3. That is the reverse of the Epson pattern, where black was the bigger jump. Brother's color figure is per cartridge. Epson's color figure is one number for "color." The <a href="/cartridges/brother-lc406/">LC406 page</a> keeps the longer note on the in-box "year of ink" line, which is a different sum and is not repeated here.</p>
+<h2>Canon PG-243: the larger cartridge is a different number</h2>
+<p>Canon's <a href="{E(canon)}" rel="nofollow noopener" target="_blank">PIXMA TS302a support page</a> prints PG-243 black at 100 pages and CL-244 color at 100 pages, with fills of 5.6 ml and 6.2 ml. It does not print a PG-243XL or a CL-244XL. The next line is PG-245 and CL-246: 180 and 180 standard, 300 and 300 XL. Those are other part numbers. Our <a href="/cartridges/canon-pg-243-cl-244/">PG-243 page</a> says which of our printer links include them, and where the TS302a itself is not yet a model page.</p>
+<p>The TS302a cell does not contain the word ISO. <a href="{E(measure)}" rel="nofollow noopener" target="_blank">Canon's measurement page</a> says the mixed text and graphics yield is declared to ISO/IEC 24711. This guide leaves that distinction in view instead of stamping ISO onto a cell that does not say it.</p>
+{compare_box_html("Check another number", [
+    '<a href="/cartridges/hp-67/">HP 67</a>: about 120 black pages, about 240 for the XL.',
+    '<a href="/cartridges/epson-212/">Epson 212</a>: 150 black ISO pages, 500 for the XL.',
+    '<a href="/cartridges/brother-lc406/">Brother LC406</a>: 3,000 black pages, 6,000 for the XL.',
+    '<a href="/cartridges/canon-pg-243-cl-244/">Canon PG-243</a>: 100 pages, and no XL of this number.',
+])}
+{next_reads_html(mid, "Keep reading", "nr-mid")}
+<h2>Cost per page, without a made-up price</h2>
+<p>Cost per page is the price you pay, divided by the approximate yield in the table. On a clean double, the XL costs less per page only when its price is less than twice the standard cartridge. HP's black and tri-color 67 rows are that kind of double. Epson's black 212 row is 3 and 1/3, so the XL can cost up to 3 and 1/3 times the standard black and still match it per page. Brother's color row is the same 3 and 1/3. Canon's PG-245 at 180 pages is 1.8 times PG-243's 100, and it is not an XL of PG-243, so the prices are not prices of two sizes of one number.</p>
+<p>None of that is a dollar figure, because the pages did not print one we can use. On {CHECKED_1121_H} the four HP 67 shop pages showed an MSRP label, a line reading $1.99 per month, and $0.00. A zero is not a shelf price. A monthly line is not the price of the cartridge in your hand. Brother's printer page shows a printer price, which is not an LC406 price. Epson's WF-2830 page prints yields and does not print a cartridge price. Dividing any of those by the yield would invent a cost. Bring the price on the box, or on the shelf, and divide it by the yield in the row that matches the number on that box.</p>
+<p>Two further cautions, both from the footnotes rather than from us. The yields are approximate and were measured by continuous printing, so a printer that sits for weeks can use more ink on cleaning than these rows show. And a standard black beside an XL color is fine only where that maker says the printer accepts both. This guide does not add a permission the maker page does not print.</p>
+{faq_html(faqs)}
+{sources_html([
+    ("HP 67 Black Original Ink Cartridge, 3YM56AN", hp67),
+    ("HP 67XL High Yield Black Original Ink Cartridge, 3YM57AN", hp67xl),
+    ("HP 67 Tri-color Original Ink Cartridge, 3YM55AN", hp67c),
+    ("HP 67XL High Yield Tri-color Original Ink Cartridge, 3YM58AN", hp67xlc),
+    ("HP ENVY 6055e shop page (prints the same four yields)", envy),
+    ("Epson WorkForce WF-2830", epson),
+    ("Brother MFC-J4335DW", brother),
+    ("Canon Support for PIXMA TS302a", canon),
+    ("How Page Yields Are Measured, Canon U.S.A.", measure),
+], CHECKED_1121_H)}
+{next_reads_html(end, "Related reading", "nr-end")}
+<p><a href="/guides/">All guides</a> · <a href="/cartridges/">Cartridges</a> · <a href="/printers/">Printers</a> · <a href="/methodology/">Sources and methods</a></p>
+</article>'''
+    write(path, page(
+        path, title, desc, body,
+        [article_ld(title, path, CHECKED_1121), faq_ld(faqs)],
+        [("/", "Home"), ("/guides/", "Guides"), (path, "XL vs standard")],
+        lastmod=CHECKED_1121,
+    ))
+
+def guides_hub():
+    path = "/guides/"
+    title = "Ink and toner guides"
+    desc = "How to read a model number, tell ink from toner, compare XL and standard yields, and see why HP numbers change by country."
+    faqs = [
+        ("Which guide should I open first?", "If the printer is in front of you, start with the model number guide, then open that model. If you already know the cartridge number and you are choosing a standard or an XL, open the yield guide."),
+        ("Do the guides list third party ink?", "No. A number appears on this site only when HP, Canon, Epson, or Brother prints it. The guides quote those pages and do not add a compatible chart from a store."),
+    ]
+    cards = [
+        ("/guides/find-the-model-number/", "Find the model number", "Where the name sits on the printer, and where the cartridge number sits on the box."),
+        ("/guides/ink-toner-or-bottle/", "Ink, toner, or bottle?", "DeskJet and PIXMA cartridges, LaserJet and Brother toner, EcoTank and MegaTank bottles."),
+        ("/guides/xl-vs-standard-cartridges/", "XL vs standard page yields", "The published page counts for HP 67, Epson 212, Brother LC406, and Canon PG-243."),
+        ("/guides/hp-cartridge-numbers-by-region/", "HP numbers by country", "When the same DeskJet section prints 67 in one column and 305 or 805 in another."),
+    ]
+    items = "".join(
+        '<li class="card"><h2><a href="' + h + '">' + E(n) + "</a></h2><p>" + E(b) + "</p></li>"
+        for h, n, b in cards
+    )
+    body = f'''<article class="prose"><h1>Guides</h1>
+<p class="sub">By {BRAND} · Last verified {CHECKED_1121_H}</p>
+<div class="answer"><p>Four guides. Each one answers a different question, and each one links the manufacturer page it quotes.</p></div>
+{photo_figure()}
+<p>Use them in order. Read the name on the front of the printer, then open that model. If the box says 67 and 67XL, the yield guide has the page counts HP prints for those two sizes, and the <a href="/printers/hp/deskjet-2700/">DeskJet 2700 hub</a> is where those counts sit for the twelve models that share them. If the number on the cartridge does not match a US listing, the region guide shows the other columns HP prints. If the supply is a bottle or a toner, the ink-or-toner guide says so before you land on a cartridge page.</p>
+<ul class="cards">{items}</ul>
+{compare_box_html("Not sure which to open", [
+    'The name is on the printer: <a href="/guides/find-the-model-number/">find the model number</a>.',
+    'You are not sure it is ink: <a href="/guides/ink-toner-or-bottle/">ink, toner, or bottle</a>.',
+    'You are choosing a size: <a href="/guides/xl-vs-standard-cartridges/">XL and standard yields</a>.',
+    'The number looks wrong for your country: <a href="/guides/hp-cartridge-numbers-by-region/">HP numbers by region</a>.',
+])}
+{faq_html(faqs)}
+<p><a href="/printers/">Printers</a> · <a href="/cartridges/">Cartridges</a> · <a href="/methodology/">Sources and methods</a></p>
+</article>'''
+    write(path, page(
+        path, title, desc, body,
+        [article_ld(title, path, CHECKED_1121), faq_ld(faqs)],
+        [("/", "Home"), (path, "Guides")],
+        lastmod=CHECKED_1121,
     ))
 
 def home(printers, fams):
@@ -1269,7 +1523,7 @@ def home(printers, fams):
 </section>
 <h2>Brands</h2><ul class="cards">{brands}</ul>
 <h2>Often looked up</h2><ul class="cols">{links}</ul>
-<h2>How to read the numbers</h2><p>The model number is on the printer. The cartridge, toner, or bottle number is on the box. <a href="/guides/find-the-model-number/">How to find both</a>. Not sure which supply type your printer takes? <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a> Numbers change by country, and a high yield pack is not a different color. <a href="/guides/hp-cartridge-numbers-by-region/">Why some HP numbers differ by country</a>. Enrolled in HP Instant Ink? <a href="/guides/hp-instant-ink/">How the plans count a page, and what cancel does to the cartridges</a>. <a href="/methodology/">How we check a page</a>.</p>
+<h2>How to read the numbers</h2><p>The model number is on the printer. The cartridge, toner, or bottle number is on the box. <a href="/guides/find-the-model-number/">How to find both</a>. Not sure which supply type your printer takes? <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a> Numbers change by country, and a high yield pack is not a different color. <a href="/guides/hp-cartridge-numbers-by-region/">Why some HP numbers differ by country</a>. A high yield pack is not a different color. <a href="/guides/xl-vs-standard-cartridges/">XL and standard page yields</a> puts the published counts side by side. Enrolled in HP Instant Ink? <a href="/guides/hp-instant-ink/">How the plans count a page, and what cancel does to the cartridges</a>. <a href="/methodology/">How we check a page</a>.</p>
 {faq_html(faqs)}'''
     write("/", page("/", "Which Ink Fits: printer ink and toner by model", "Which cartridge, toner, or ink bottle fits your HP, Canon, Epson, or Brother printer, from the manufacturer lists.", body, [faq_ld(faqs)], lastmod=CHECKED_1120))
 
@@ -1290,11 +1544,14 @@ def legal_pages():
 <p>Last verified {TODAY_H}.</p>
 <h2>What we use</h2><p>HP's support document <a href="{HP_URL}" rel="nofollow noopener">Which cartridges work with my HP printer?</a>, plus the HP toner page for the LaserJet Pro M428 and the HP Canada page for the ENVY 6055e. Canon shop and Knowledge Base pages. Epson product, ink, and FAQ pages. Brother product pages for TN760, the DR730 bundle, LC406, and the MFC-J4335DW.</p>
 <h2>What we leave out</h2><p>We do not copy a store's compatible ink chart. We do not list a third party number. If a cell on HP's table is ambiguous, that section is skipped. If two HP sections disagree about one model, the page shows both and says so. Page yield is blank when the source does not print one. HP's other region columns are quoted, and they do not yet have their own cartridge pages.</p>
-<h2>Dates</h2><p>The date on a page is the day we checked the source, not a refreshed stamp. We change it when the numbers change.</p>''')
+<h2>Yields and prices</h2><p>Checked {CHECKED_1121_H}. A yield guide quotes the cartridge specification that prints the page count. It does not turn a monthly plan, a printer price, or a $0.00 display into a cost per page. If two maker pages disagree, the guide says so and does not pick a winner.</p>
+<h2>Dates</h2><p>The date on a page is the day we checked the source, not a refreshed stamp. We change it when the numbers change.</p>''', lastmod=CHECKED_1121, published=TODAY)
     simple("/image-policy/", "Image policy | " + BRAND, "How Which Ink Fits handles images, logos, and diagrams.", "Image policy", f'''
-<p>Last updated {CHECKED_1120_H}.</p>
-<p>The mark in the header is our own drawing of an ink drop, and that image links to this page. We do not display HP, Canon, Epson, or Brother logos. A guide may show one photograph-style picture. Those pictures are made by a model. The picture links to this page, the caption says AI-generated image, and the picture does not show a real person or a brand logo.</p>
-<p>Questions: <a href="/contact/">contact</a> or the <a href="/copyright/">copyright page</a>.</p>''', lastmod=CHECKED_1120, published=TODAY)
+<p>Last updated {CHECKED_1121_H}.</p>
+<p>The mark in the header is our own drawing of an ink drop, and that image links to this page. We do not display HP, Canon, Epson, or Brother logos, and we do not use their product photos.</p>
+<p>When a guide or a printer hub shows a photo, that photo is AI-generated. The caption says so, and the image links to this page. It is a plain news-style picture. It does not show a real person, a brand logo, or readable text.</p>
+<p>Questions: <a href="/contact/">contact</a> or the <a href="/copyright/">copyright page</a>.</p>''', lastmod=CHECKED_1121, published=TODAY)
+
     simple("/contact/", "Contact " + BRAND, "Write to Which Ink Fits about a wrong cartridge number or a missing model.", "Contact", '''
 <p>For a correction or a model request, email <a href="mailto:joshuaofisrael@gmail.com">joshuaofisrael@gmail.com</a>.</p>
 <h2>What to include</h2><p>Send the page address, the number you expected, and a link to the manufacturer page that shows it. We update the verified date when we recheck the source.</p>
@@ -1351,6 +1608,8 @@ def search_index(printers, series, fams):
     for slug, f in fams.items():
         nice = BRANDS[f["brand"]] + " " + slug.split("-", 1)[1].upper()
         rows.append({"n": nice, "u": "/cartridges/" + slug + "/", "t": "Cartridge", "k": re.sub(r"[^a-z0-9]+", "", slug)})
+    rows.append({"n": "XL vs standard page yields", "u": "/guides/xl-vs-standard-cartridges/", "t": "Guide", "k": "xlvsstandardinkcartridgepageyieldcostperpage"})
+    rows.append({"n": "Guides", "u": "/guides/", "t": "Guide", "k": "guidesyieldmodelnumbertoner"})
     open(os.path.join(ROOT, "assets", "search-index.js"), "w", encoding="utf-8").write("window.INK_INDEX=" + json.dumps(rows, ensure_ascii=False) + ";\n")
 
 def png(path, w, h, fn):
@@ -1396,7 +1655,7 @@ def extras(printers, series, fams):
     bots = ["*", "Googlebot", "Bingbot", "Mediapartners-Google", "OAI-SearchBot", "ChatGPT-User", "GPTBot", "PerplexityBot", "Perplexity-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "Google-Extended", "Applebot", "Applebot-Extended", "DuckAssistBot", "Amazonbot", "CCBot", "Bytespider"]
     open(os.path.join(ROOT, "robots.txt"), "w").write("".join("User-agent: " + b + "\nAllow: /\n\n" for b in bots) + "Sitemap: " + BASE + "sitemap.xml\n")
     open(os.path.join(ROOT, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join("<url><loc>" + url(p) + "</loc><lastmod>" + m + "</lastmod></url>\n" for p, m in PAGES) + "</urlset>\n")
-    lines = ["# " + BRAND, "", "> Which Ink Fits (whichinkfits.com) lists the ink, toner, and bottle numbers HP, Canon, Epson, and Brother publish for a printer model, and the printers a number fits. Checked " + TODAY_H + ".", "", "Independent. Not affiliated with any printer maker. Confirm the number on the manufacturer page.", "", "## Guides", f"- [Find the model number]({url('/guides/find-the-model-number/')})", f"- [Ink cartridge, toner, or bottle?]({url('/guides/ink-toner-or-bottle/')})", f"- [Why HP cartridge numbers differ outside the US]({url('/guides/hp-cartridge-numbers-by-region/')})", f"- [How HP Instant Ink counts a page]({url('/guides/hp-instant-ink/')})", f"- [Sources and methods]({url('/methodology/')})", "", "## Printers"]
+    lines = ["# " + BRAND, "", "> Which Ink Fits (whichinkfits.com) lists the ink, toner, and bottle numbers HP, Canon, Epson, and Brother publish for a printer model, and the printers a number fits. Checked " + TODAY_H + ".", "", "Independent. Not affiliated with any printer maker. Confirm the number on the manufacturer page.", "", "## Guides", f"- [Find the model number]({url('/guides/find-the-model-number/')})", f"- [Ink cartridge, toner, or bottle?]({url('/guides/ink-toner-or-bottle/')})", f"- [Why HP cartridge numbers differ outside the US]({url('/guides/hp-cartridge-numbers-by-region/')})", f"- [How HP Instant Ink counts a page]({url('/guides/hp-instant-ink/')})", f"- [XL vs standard page yields]({url('/guides/xl-vs-standard-cartridges/')})", f"- [Sources and methods]({url('/methodology/')})", "", "## Printers"]
     for p in printers:
         lines.append(f"- [{p['name']}]({url('/printers/' + p['brand'] + '/' + p['slug'] + '/')})")
     lines.append("")
@@ -1437,6 +1696,9 @@ if __name__ == "__main__":
     guide_ink_toner_bottle()
     guide_hp_region()
     guide_hp_instant_ink()
+    guides_hub()
+    guide_xl_vs_standard()
+
     home(printers, fams)
     legal_pages()
     not_found()
