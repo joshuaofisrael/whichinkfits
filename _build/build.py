@@ -254,7 +254,7 @@ def page(path, title, desc, body, jsonld=None, crumbs=None, noindex=False, legal
     beacon = ("<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{\"token\": \"" + CF_BEACON_TOKEN + "\"}'></script><!-- End Cloudflare Web Analytics -->") if LAUNCH else "<!-- cf-beacon: added by the launch build -->"
     ga4_head, ga4_body = analytics_markup()
     adsense_head = ""
-    if LAUNCH and ADSENSE_CLIENT:
+    if False:  # AdSense detached 21 Nov 2026 until the account is approved (see seo-central/site-seo-rules.md). Do not re-add.
         adsense_head = (
             '<meta name="google-adsense-account" content="' + E(ADSENSE_CLIENT) + '">\n'
             '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='
@@ -1321,7 +1321,7 @@ def images():
 def extras(printers, series, fams):
     open(os.path.join(ROOT, "CNAME"), "w").write("whichinkfits.com\n")
     open(os.path.join(ROOT, INDEXNOW_KEY + ".txt"), "w").write(INDEXNOW_KEY + "\n")
-    open(os.path.join(ROOT, "ads.txt"), "w").write("google.com, pub-5681559774142917, DIRECT, f08c47fec0942fa0\n")
+    open(os.path.join(ROOT, "ads.txt"), "w").write("")  # AdSense detached 21 Nov 2026 until the account is approved (see seo-central/site-seo-rules.md). Do not re-add.
     bots = ["*", "Googlebot", "Bingbot", "Mediapartners-Google", "OAI-SearchBot", "ChatGPT-User", "GPTBot", "PerplexityBot", "Perplexity-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "Google-Extended", "Applebot", "Applebot-Extended", "DuckAssistBot", "Amazonbot", "CCBot", "Bytespider"]
     open(os.path.join(ROOT, "robots.txt"), "w").write("".join("User-agent: " + b + "\nAllow: /\n\n" for b in bots) + "Sitemap: " + BASE + "sitemap.xml\n")
     open(os.path.join(ROOT, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join("<url><loc>" + url(p) + "</loc><lastmod>" + m + "</lastmod></url>\n" for p, m in PAGES) + "</urlset>\n")
