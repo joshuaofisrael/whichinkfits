@@ -31,9 +31,13 @@ PUBLISHED_TODAY = "2026-11-19"
 PUBLISHED_TODAY_H = "19 Nov 2026"
 # Rechecks from the 20 Nov 2026 SEO batch. datePublished stays the day the
 # page first went up. dateModified and sitemap lastmod use this date only
-# where the words on that page changed.
+# where the words on that page changed. The Instant Ink guide is new, so its
+# datePublished is this date.
 CHECKED_1120 = "2026-11-20"
 CHECKED_1120_H = "20 Nov 2026"
+# Assigned bank photo. The file is not in the repo until the image bank copy exists.
+# Do not merge the Instant Ink page while this path 404s.
+INSTANT_INK_PHOTO = "/assets/photos/ink-cartridges-printer.png"
 INDEXNOW_KEY = "4f77a5e3aae98a8a1031b02723738f83"
 CF_BEACON_TOKEN = "eac63f2b5dbc4539a2d95249baab6472"
 # Measurement id from the GA4 property. Empty until the owner sets G-XXXXXXXXXX.
@@ -1163,6 +1167,70 @@ def guide_hp_region():
 </article>'''
     write(path, page(path, title, desc, body, [article_ld(title, path, PUBLISHED_TODAY), faq_ld(faqs)], [("/", "Home"), (path, "HP numbers by region")], lastmod=PUBLISHED_TODAY))
 
+def guide_hp_instant_ink():
+    """HP Instant Ink page-count and cancellation guide. Held for the bank photo."""
+    path = "/guides/hp-instant-ink/"
+    title = "How HP Instant Ink counts each page"
+    desc = "HP counts any ink on a sheet as one page, and both sides as two. After you cancel, HP's terms say the subscription cartridges are disabled."
+    faqs = [
+        ("What does HP count as one page?", "HP's Instant Ink terms define a printed page as a page on which the printer puts any amount of ink, including a photo. Printing both sides of one sheet counts as two pages. Color, black, and photo pages count the same way on HP's enrollment support page."),
+        ("Do unused pages carry over?", "On a monthly plan, HP's terms say unused pages roll over, up to three times the monthly ink allotment (two times for toner). A 50-page ink plan can hold 150 rollover pages, which is the example on HP's FAQ. HP's FAQ says a yearly plan does not roll unused pages into the next year."),
+        ("What happens to the cartridges if I cancel?", "HP's terms say cancellation takes effect on the last day of the current month period, the last month is charged in full, and HP then remotely disables the subscription cartridges. HP's support page says you can keep printing with those cartridges until that day, then remove them and install regular cartridges. Taking the cartridges out, or unplugging the printer, does not itself cancel the plan."),
+        ("Are Instant Ink cartridges the same as the numbers on the printer pages here?", "No. The cartridge pages on this site repeat the part numbers in HP's compatibility document, such as 67 for the DeskJet 2755e. Instant Ink cartridges are subscription supplies. HP's terms say HP keeps ownership and that they work only in the enrolled printer."),
+    ]
+    reads = [
+        ("/printers/hp/deskjet-2755e/", "HP DeskJet 2755e ink", "HP's compatibility list names 67 and 67XL for this model. Instant Ink is a separate supply."),
+        ("/cartridges/hp-67/", "HP 67: which printers use it", "The cartridge family on many DeskJet and ENVY pages, outside a subscription."),
+        ("/guides/ink-toner-or-bottle/", "Ink cartridge, toner, or bottle?", "How to tell the supply type before you match a number."),
+        ("/guides/find-the-model-number/", "Find the model number", "Read the name on the printer before you open a cartridge page."),
+    ]
+    body = f'''<article class="prose"><h1>How HP Instant Ink counts a page, and what happens to the cartridges when you cancel</h1>
+<p class="sub">By {BRAND} · Checked {CHECKED_1120_H}</p>
+<div class="answer"><p><strong>Any ink on the sheet counts as one page, and both sides count as two.</strong> If you cancel, HP's terms say the plan runs through the last day of the current month and HP then remotely disables the subscription cartridges. The three HP pages below do not describe the leftover ink in exactly the same sentence.</p></div>
+<figure class="figure"><a href="/image-policy/"><img src="{INSTANT_INK_PHOTO}" width="1280" height="720" alt="AI-generated image"></a>
+<figcaption><a href="/image-policy/">AI-generated image</a>. No brand logos and no real person.</figcaption></figure>
+<h2>What HP counts</h2>
+<p>HP's Instant Ink terms, section 6, define a printed page in capital letters: a page "upon which any amount of printing is performed" by the printer, "including any photos." The next sentence says printing both sides of the same sheet counts as two pages. A page is the media type and size in the printer's specifications. HP's enrollment support page says the same thing in plainer language: color, black and white, and photo prints are counted the same way.</p>
+<p>A plan is a number of those pages per month, not a number of cartridges. The FAQ page, read {CHECKED_1120_H}, said plans started at $1.99 for 10 pages a month and went up to $32.99 for 700 pages a month, and that extra pages were sold in sets of 10 to 15 pages for $2, with the set size depending on the plan. Those prices are what that FAQ printed that day. The plan menu on hpinstantink.com is the list that can change. The same FAQ says the average family uses the 100-page plan and the average small business uses the 700-page plan. That is HP's description of its customers, not a measurement we made.</p>
+<h2>Rollover is capped, and a yearly plan is different</h2>
+<p>Unused pages on a monthly plan roll over. The terms cap the rollover you can carry into the next month at three times the monthly ink allotment, or two times for toner. Anything above that cap is forfeited. HP's FAQ uses the same ink cap and gives the example: a 50-page plan can roll 150 pages. The terms then say the total you can have at the start of a month is four times the ink allotment, or three times for toner: the new month's pages plus the capped rollover.</p>
+<p>A yearly plan does not work that way. Footnote 2 on the FAQ says unused yearly-plan pages do not roll into the next year. The enrollment support page says the yearly plan was, at the time of that page, offered only in the United States, and that cancellation inside the first 30 days is immediate. After 30 days, that support page says cancellation waits until the end of the yearly cycle or until the plan pages are used up.</p>
+{compare_box_html("Check the cartridge number instead", [
+    'DeskJet in an Instant Ink series, bought as a normal cartridge: <a href="/printers/hp/deskjet-2755e/">DeskJet 2755e</a> lists HP 67.',
+    'The 67 family across printers: <a href="/cartridges/hp-67/">which printers use HP 67</a>.',
+    'Ink, toner, or a bottle: <a href="/guides/ink-toner-or-bottle/">which supply you have</a>.',
+    'The name on the front of the printer: <a href="/guides/find-the-model-number/">where to read it</a>.',
+])}
+{next_reads_html(reads, "Keep reading")}
+<h2>The cartridges are not yours to keep using</h2>
+<p>The terms say HP retains ownership of the subscription cartridges and supplies them only so you can use the service. They work with the printer named on the account. The terms say you may not move them to another printer, use them outside the service unless HP says you can, or sell them. HP's FAQ says the cartridges in the welcome kit only work with an Instant Ink subscription. Shipping is not every month: the printer reports ink levels, and HP ships when it decides you need cartridges.</p>
+<p>The printer has to stay online. The terms say that if it is not connected to the internet, the subscription cartridges are disabled. HP's FAQ says the service needs Wi-Fi so HP can see the ink level. That is separate from cancellation. Unplugging the printer does not end the billing, and the terms say so.</p>
+<h2>What the three HP pages say about canceling</h2>
+<p>You can cancel online at hpinstantink.com or at the cancel link in the terms, or by calling HP. The terms say the cancellation takes effect on the last day of the current month period. Their example: a period that runs from 15 January to 15 February, with a cancel request on 30 January, ends on 15 February. The last month is charged in full. There is no refund for plan pages or rollover pages you did not print, and no refund for unused ink. Removing the cartridges, not printing, or leaving the printer offline does not cancel the plan.</p>
+<p>On what is left in the cartridges, the pages diverge.</p>
+<p>The terms, in the cancellation section and again in the cartridge section, say HP will remotely disable the subscription cartridges so they no longer print. The consequences paragraph also says you must stop using the service and return the cartridges. An earlier paragraph says HP requests that you return empty or cancelled cartridges for recycling, and lists cases in which you may return them. Both paragraphs are in the same terms document.</p>
+<p>HP's FAQ says the Instant Ink cartridges will not work after the end of the billing cycle in which you cancel, and that you go back to HP original Standard or XL cartridges. Footnote 1 adds that, for a printer that is not HP+, HP's own words also allow third-party cartridges HP describes as compatible. Which Ink Fits does not recommend for or against other ink. The FAQ also says there is no cancellation fee, and that a downgrade or a cancellation applies after the last day of the current billing period.</p>
+<p>HP's enrollment support page says you can keep printing with the Instant Ink supplies until the end of the current billing cycle, and that you then remove those cartridges and install regular ones. It says the final monthly charge comes at the end of the cycle, with an email when you cancel and another when the cycle ends.</p>
+<p>One exception is easy to miss. If the cartridge that shipped in the printer box was converted into a subscription cartridge when you enrolled, the terms say that cancelling while that cartridge is not yet empty may let you revert to using it as an in-box cartridge. The terms tell you to read the papers that came with the printer if it shipped with subscription cartridges. That sentence is narrower than "the cartridges always keep working" and narrower than "they always die on the last day."</p>
+<h2>Toner, and which printers</h2>
+<p>HP's FAQ says Instant Ink for toner is closed to new customers on the LaserJet 100 and 200 series and the LaserJet 3000 and 4000 series. People already subscribed are not affected, according to that FAQ. A toner printer on this site, such as the <a href="/printers/hp/laserjet-pro-m428/">LaserJet Pro M428</a>, is still a toner number (58A), not an Instant Ink plan.</p>
+<p>The same FAQ prints a long eligible-model list. Checked {CHECKED_1120_H}, that list includes the DeskJet 2750e series, the ENVY 6050e series, and the OfficeJet Pro 9010 series. Our pages for the <a href="/printers/hp/deskjet-2755e/">DeskJet 2755e</a>, the <a href="/printers/hp/envy-6055e/">ENVY 6055e</a>, and the <a href="/printers/hp/officejet-pro-9015/">OfficeJet Pro 9015</a> are in those series. Eligibility is HP's list, not ours. The cartridge number on those pages is the one in HP's compatibility document, which is what you match if you are not printing on the subscription.</p>
+{faq_html(faqs)}
+{sources_html([
+    ("HP Instant Ink Terms of Service", "https://instantink.hpconnected.com/us/en/v2/terms"),
+    ("HP Instant Ink FAQs", "https://www.hp.com/us-en/subscriptions/instant-ink/faq.html"),
+    ("HP Support: Enrolling in HP Instant Ink", "https://support.hp.com/us-en/document/ish_3259776-1993270-16"),
+], CHECKED_1120_H)}
+{next_reads_html(reads, "Related reading", "nr-h-end")}
+<p><a href="/printers/hp/">HP printers</a> · <a href="/cartridges/">Cartridges</a> · <a href="/guides/find-the-model-number/">Find the model number</a></p>
+</article>'''
+    write(path, page(
+        path, title, desc, body,
+        [article_ld(title, path, CHECKED_1120), faq_ld(faqs)],
+        [("/", "Home"), (path, "HP Instant Ink")],
+        lastmod=CHECKED_1120,
+    ))
+
 def home(printers, fams):
     picks = [
         ("/printers/hp/officejet-pro-9015/", "HP OfficeJet Pro 9015"),
@@ -1201,13 +1269,16 @@ def home(printers, fams):
 </section>
 <h2>Brands</h2><ul class="cards">{brands}</ul>
 <h2>Often looked up</h2><ul class="cols">{links}</ul>
-<h2>How to read the numbers</h2><p>The model number is on the printer. The cartridge, toner, or bottle number is on the box. <a href="/guides/find-the-model-number/">How to find both</a>. Not sure which supply type your printer takes? <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a> Numbers change by country, and a high yield pack is not a different color. <a href="/guides/hp-cartridge-numbers-by-region/">Why some HP numbers differ by country</a>. <a href="/methodology/">How we check a page</a>.</p>
+<h2>How to read the numbers</h2><p>The model number is on the printer. The cartridge, toner, or bottle number is on the box. <a href="/guides/find-the-model-number/">How to find both</a>. Not sure which supply type your printer takes? <a href="/guides/ink-toner-or-bottle/">Ink cartridge, toner, or bottle?</a> Numbers change by country, and a high yield pack is not a different color. <a href="/guides/hp-cartridge-numbers-by-region/">Why some HP numbers differ by country</a>. Enrolled in HP Instant Ink? <a href="/guides/hp-instant-ink/">How the plans count a page, and what cancel does to the cartridges</a>. <a href="/methodology/">How we check a page</a>.</p>
 {faq_html(faqs)}'''
-    write("/", page("/", "Which Ink Fits: printer ink and toner by model", "Which cartridge, toner, or ink bottle fits your HP, Canon, Epson, or Brother printer, from the manufacturer lists.", body, [faq_ld(faqs)], lastmod=PUBLISHED))
+    write("/", page("/", "Which Ink Fits: printer ink and toner by model", "Which cartridge, toner, or ink bottle fits your HP, Canon, Epson, or Brother printer, from the manufacturer lists.", body, [faq_ld(faqs)], lastmod=CHECKED_1120))
 
-def simple(path, title, desc, h1, inner, crumb=None, legal=False):
+def simple(path, title, desc, h1, inner, crumb=None, legal=False, lastmod=None, published=None):
     body = '<article class="prose"><h1>' + E(h1) + "</h1>" + inner + "</article>"
-    write(path, page(path, title, desc, body, None, [("/", "Home"), (path, crumb or h1)], legal=legal))
+    ld = None
+    if lastmod:
+        ld = [article_ld(title, path, published or TODAY, modified=lastmod)]
+    write(path, page(path, title, desc, body, ld, [("/", "Home"), (path, crumb or h1)], legal=legal, lastmod=lastmod))
 
 def legal_pages():
     simple("/about/", "About " + BRAND, "What Which Ink Fits is and how the printer lists are checked.", "About Which Ink Fits", f'''
@@ -1221,9 +1292,9 @@ def legal_pages():
 <h2>What we leave out</h2><p>We do not copy a store's compatible ink chart. We do not list a third party number. If a cell on HP's table is ambiguous, that section is skipped. If two HP sections disagree about one model, the page shows both and says so. Page yield is blank when the source does not print one. HP's other region columns are quoted, and they do not yet have their own cartridge pages.</p>
 <h2>Dates</h2><p>The date on a page is the day we checked the source, not a refreshed stamp. We change it when the numbers change.</p>''')
     simple("/image-policy/", "Image policy | " + BRAND, "How Which Ink Fits handles images, logos, and diagrams.", "Image policy", f'''
-<p>Last updated {TODAY_H}.</p>
-<p>The mark in the header is our own drawing of an ink drop, and that image links to this page. We do not display HP, Canon, Epson, or Brother logos. The site has no product photos. If we add an illustration made by a model, the caption will say AI generated image, and it will not show a real person or a brand logo.</p>
-<p>Questions: <a href="/contact/">contact</a> or the <a href="/copyright/">copyright page</a>.</p>''')
+<p>Last updated {CHECKED_1120_H}.</p>
+<p>The mark in the header is our own drawing of an ink drop, and that image links to this page. We do not display HP, Canon, Epson, or Brother logos. A guide may show one photograph-style picture. Those pictures are made by a model. The picture links to this page, the caption says AI-generated image, and the picture does not show a real person or a brand logo.</p>
+<p>Questions: <a href="/contact/">contact</a> or the <a href="/copyright/">copyright page</a>.</p>''', lastmod=CHECKED_1120, published=TODAY)
     simple("/contact/", "Contact " + BRAND, "Write to Which Ink Fits about a wrong cartridge number or a missing model.", "Contact", '''
 <p>For a correction or a model request, email <a href="mailto:joshuaofisrael@gmail.com">joshuaofisrael@gmail.com</a>.</p>
 <h2>What to include</h2><p>Send the page address, the number you expected, and a link to the manufacturer page that shows it. We update the verified date when we recheck the source.</p>
@@ -1325,7 +1396,7 @@ def extras(printers, series, fams):
     bots = ["*", "Googlebot", "Bingbot", "Mediapartners-Google", "OAI-SearchBot", "ChatGPT-User", "GPTBot", "PerplexityBot", "Perplexity-User", "ClaudeBot", "Claude-SearchBot", "Claude-User", "Google-Extended", "Applebot", "Applebot-Extended", "DuckAssistBot", "Amazonbot", "CCBot", "Bytespider"]
     open(os.path.join(ROOT, "robots.txt"), "w").write("".join("User-agent: " + b + "\nAllow: /\n\n" for b in bots) + "Sitemap: " + BASE + "sitemap.xml\n")
     open(os.path.join(ROOT, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join("<url><loc>" + url(p) + "</loc><lastmod>" + m + "</lastmod></url>\n" for p, m in PAGES) + "</urlset>\n")
-    lines = ["# " + BRAND, "", "> Which Ink Fits (whichinkfits.com) lists the ink, toner, and bottle numbers HP, Canon, Epson, and Brother publish for a printer model, and the printers a number fits. Checked " + TODAY_H + ".", "", "Independent. Not affiliated with any printer maker. Confirm the number on the manufacturer page.", "", "## Guides", f"- [Find the model number]({url('/guides/find-the-model-number/')})", f"- [Ink cartridge, toner, or bottle?]({url('/guides/ink-toner-or-bottle/')})", f"- [Why HP cartridge numbers differ outside the US]({url('/guides/hp-cartridge-numbers-by-region/')})", f"- [Sources and methods]({url('/methodology/')})", "", "## Printers"]
+    lines = ["# " + BRAND, "", "> Which Ink Fits (whichinkfits.com) lists the ink, toner, and bottle numbers HP, Canon, Epson, and Brother publish for a printer model, and the printers a number fits. Checked " + TODAY_H + ".", "", "Independent. Not affiliated with any printer maker. Confirm the number on the manufacturer page.", "", "## Guides", f"- [Find the model number]({url('/guides/find-the-model-number/')})", f"- [Ink cartridge, toner, or bottle?]({url('/guides/ink-toner-or-bottle/')})", f"- [Why HP cartridge numbers differ outside the US]({url('/guides/hp-cartridge-numbers-by-region/')})", f"- [How HP Instant Ink counts a page]({url('/guides/hp-instant-ink/')})", f"- [Sources and methods]({url('/methodology/')})", "", "## Printers"]
     for p in printers:
         lines.append(f"- [{p['name']}]({url('/printers/' + p['brand'] + '/' + p['slug'] + '/')})")
     lines.append("")
@@ -1365,6 +1436,7 @@ if __name__ == "__main__":
     guide()
     guide_ink_toner_bottle()
     guide_hp_region()
+    guide_hp_instant_ink()
     home(printers, fams)
     legal_pages()
     not_found()
